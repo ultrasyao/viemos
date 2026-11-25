@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'db.dart';
+import 'island.dart';
 import 'money_input.dart';
 import 'sfx.dart';
 import 'ui.dart';
@@ -18,7 +19,7 @@ Future<void> showTxnDialog(BuildContext context, String type) async {
     toast(context, 'Tambah rekening dulu di tab Rekening');
     return;
   }
-  final saved = await showGeneralDialog<bool>(
+  final saved = await showGeneralDialog<SavedTxn>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Tutup',
@@ -73,9 +74,28 @@ Future<void> showTxnDialog(BuildContext context, String type) async {
       );
     },
   );
-  if (saved == true && context.mounted) {
-    toast(context, '${_names[type]} tersimpan');
+  if (saved != null && context.mounted) {
+    final isTf = saved.type == 'transfer';
+    final where = isTf ? '${saved.from} → ${saved.to ?? '?'}' : saved.from;
+    final sub = saved.note.isEmpty ? where : '$where · ${saved.note}';
+    final sign = saved.type == 'in' ? '+' : (saved.type == 'out' ? '-' : '');
+    showIsland(
+      context,
+      title: '${_names[type]} tersimpan',
+      subtitle: sub,
+      amount: '$sign${money(saved.amount)}',
+      icon: _icon(type),
+      color: _accent(type),
+      sound: type,
+    );
   }
+}
+
+class SavedTxn {
+  final String type, from, note;
+  final String? to;
+  final int amount;
+  const SavedTxn(this.type, this.from, this.to, this.amount, this.note);
 }
 
 class _Pill extends StatelessWidget {
@@ -181,7 +201,13 @@ class _TxnDialogState extends State<TxnDialog> {
       ts: when,
       note: noteC.text.trim(),
     );
-    if (mounted) Navigator.pop(context, true);
+    if (!mounted) return;
+    String nameOf(int id) => widget.accounts.firstWhere((a) => a.id == id).name;
+    Navigator.pop(
+      context,
+      SavedTxn(widget.type, nameOf(from), widget.type == 'transfer' && to != null ? nameOf(to!) : null,
+          amt, noteC.text.trim()),
+    );
   }
 
   Widget _lbl(String t) => Padding(

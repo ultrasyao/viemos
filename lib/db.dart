@@ -122,4 +122,64 @@ FROM accounts a ORDER BY a.id''');
         )
     ];
   }
+
+  /// Paksa semua layar memuat ulang (mis. setelah ganti format uang).
+  void refresh() => _bump();
+
+  Future<Map<String, dynamic>> exportAll() async {
+    final d = await _d;
+    return {
+      'app': 'viemos',
+      'version': 1,
+      'exported_at': DateTime.now().toIso8601String(),
+      'accounts': await d.query('accounts', orderBy: 'id'),
+      'txns': await d.query('txns', orderBy: 'id'),
+    };
+  }
+
+  /// Ganti SEMUA data dengan isi backup. Gagal = tidak ada yang berubah.
+  Future<void> importAll(Map<String, dynamic> data) async {
+    final accs = data['accounts'];
+    final txs = data['txns'];
+    if (data['app'] != 'viemos' || accs is! List || txs is! List) {
+      throw const FormatException('Format backup tidak dikenali');
+    }
+    final d = await _d;
+    await d.transaction((t) async {
+      await t.delete('txns');
+      await t.delete('accounts');
+      for (final raw in accs) {
+        final a = raw as Map;
+        await t.insert('accounts', {
+          'id': (a['id'] as num).toInt(),
+          'name': a['name'] as String,
+          'kind': a['kind'] as String,
+          'initial': (a['initial'] as num).toInt(),
+          'color': (a['color'] as num).toInt(),
+        });
+      }
+      for (final raw in txs) {
+        final x = raw as Map;
+        await t.insert('txns', {
+          'id': (x['id'] as num).toInt(),
+          'type': x['type'] as String,
+          'account_id': (x['account_id'] as num).toInt(),
+          'to_account_id': (x['to_account_id'] as num?)?.toInt(),
+          'amount': (x['amount'] as num).toInt(),
+          'ts': (x['ts'] as num).toInt(),
+          'note': (x['note'] as String?) ?? '',
+        });
+      }
+    });
+    _bump();
+  }
+
+  Future<void> clearAll() async {
+    final d = await _d;
+    await d.transaction((t) async {
+      await t.delete('txns');
+      await t.delete('accounts');
+    });
+    _bump();
+  }
 }

@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
+import 'lock.dart';
+import 'notif.dart';
+import 'prefs.dart';
 import 'sfx.dart';
 import 'intro.dart';
 import 'shell.dart';
 import 'ui.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Prefs.load();
+  Lock.locked.value = Prefs.hasPin;
   Sfx.warm();
+  Notifs.init().then((_) {
+    if (Prefs.reminderOn) Notifs.scheduleDaily(Prefs.reminderMin);
+  });
   runApp(const ViemosApp());
 }
 
@@ -48,11 +56,13 @@ class _RootState extends State<Root> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 700),
-      child: introDone
-          ? const Shell(key: ValueKey('shell'))
-          : Intro(key: const ValueKey('intro'), onDone: () => setState(() => introDone = true)),
+    return AppLock(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 700),
+        child: introDone
+            ? const Shell(key: ValueKey('shell'))
+            : Intro(key: const ValueKey('intro'), onDone: () => setState(() => introDone = true)),
+      ),
     );
   }
 }

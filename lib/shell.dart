@@ -4,6 +4,7 @@ import 'add.dart';
 import 'history.dart';
 import 'quick_add.dart';
 import 'recap.dart';
+import 'settings.dart';
 import 'sfx.dart';
 import 'txn_dialog.dart';
 import 'ui.dart';
@@ -28,7 +29,7 @@ class _ShellState extends State<Shell> {
       case 3:
         return const RecapScreen(key: ValueKey(3));
       default:
-        return const _Soon(key: ValueKey(4), title: 'Setting');
+        return const SettingsScreen(key: ValueKey(4));
     }
   }
 
@@ -93,23 +94,6 @@ class _ShellState extends State<Shell> {
       ),
     );
   }
-}
-
-class _Soon extends StatelessWidget {
-  final String title;
-  const _Soon({super.key, required this.title});
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: kTitle),
-            const SizedBox(height: 40),
-            const Center(child: Text('Segera hadir', style: TextStyle(color: kMuted))),
-          ],
-        ),
-      );
 }
 
 class NavPill extends StatelessWidget {

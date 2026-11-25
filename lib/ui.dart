@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'island.dart';
 
 const kOrange = Color(0xFFFFB066);
 const kGlow = Color(0x38FFB066);
@@ -43,15 +44,8 @@ Widget label(String t) => Padding(
       child: Text(t, style: const TextStyle(color: kMuted, fontSize: 13)),
     );
 
-void toast(BuildContext c, String m) {
-  final s = ScaffoldMessenger.of(c);
-  s.hideCurrentSnackBar();
-  s.showSnackBar(SnackBar(
-    content: Text(m),
-    behavior: SnackBarBehavior.floating,
-    margin: const EdgeInsets.fromLTRB(20, 0, 20, 110),
-  ));
-}
+void toast(BuildContext c, String m) =>
+    showIsland(c, title: m, icon: Icons.info_outline_rounded, color: kOrange, sound: 'info');
 
 class GlassCard extends StatelessWidget {
   final Widget child;
