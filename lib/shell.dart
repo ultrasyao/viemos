@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'accounts.dart';
 import 'add.dart';
 import 'history.dart';
+import 'quick_add.dart';
+import 'recap.dart';
 import 'sfx.dart';
+import 'txn_dialog.dart';
 import 'ui.dart';
 
 class Shell extends StatefulWidget {
@@ -13,7 +16,6 @@ class Shell extends StatefulWidget {
 
 class _ShellState extends State<Shell> {
   int i = 0;
-  double dir = 1;
 
   Widget _page(int k) {
     switch (k) {
@@ -24,7 +26,7 @@ class _ShellState extends State<Shell> {
       case 2:
         return const HistoryScreen(key: ValueKey(2));
       case 3:
-        return const _Soon(key: ValueKey(3), title: 'Rekap');
+        return const RecapScreen(key: ValueKey(3));
       default:
         return const _Soon(key: ValueKey(4), title: 'Setting');
     }
@@ -32,6 +34,7 @@ class _ShellState extends State<Shell> {
 
   @override
   Widget build(BuildContext context) {
+    final safeBottom = MediaQuery.of(context).padding.bottom;
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(
@@ -48,14 +51,22 @@ class _ShellState extends State<Shell> {
               child: SafeArea(
                 bottom: false,
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 350),
-                  switchInCurve: Curves.easeOutCubic,
-                  transitionBuilder: (child, a) => FadeTransition(
-                    opacity: a,
-                    child: SlideTransition(
-                      position: Tween(begin: Offset(0.06 * dir, 0), end: Offset.zero).animate(a),
-                      child: child,
-                    ),
+                  duration: const Duration(milliseconds: 460),
+                  switchInCurve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
+                  switchOutCurve: const Interval(0.6, 1.0),
+                  transitionBuilder: (child, a) => AnimatedBuilder(
+                    animation: a,
+                    child: child,
+                    builder: (_, c) {
+                      final out = a.status == AnimationStatus.reverse;
+                      return Opacity(
+                        opacity: a.value.clamp(0.0, 1.0).toDouble(),
+                        child: FractionalTranslation(
+                          translation: Offset(0, out ? 0 : 0.02 * (1 - a.value)),
+                          child: c,
+                        ),
+                      );
+                    },
                   ),
                   child: _page(i),
                 ),
@@ -67,13 +78,14 @@ class _ShellState extends State<Shell> {
               bottom: 0,
               child: SafeArea(
                 top: false,
-                child: NavPill(
-                  index: i,
-                  onTap: (v) => setState(() {
-                    dir = v >= i ? 1 : -1;
-                    i = v;
-                  }),
-                ),
+                child: NavPill(index: i, onTap: (v) => setState(() => i = v)),
+              ),
+            ),
+            Positioned.fill(
+              child: QuickAdd(
+                visible: i != 4,
+                bottom: safeBottom + 14 + 76 + 8,
+                onPick: (t) => showTxnDialog(context, t),
               ),
             ),
           ],
@@ -157,7 +169,10 @@ class NavPill extends StatelessWidget {
                     Expanded(
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () { if (k != index) Sfx.tap(); onTap(k); },
+                        onTap: () {
+                          if (k != index) Sfx.click();
+                          onTap(k);
+                        },
                         child: SizedBox(
                           height: 76,
                           child: Center(

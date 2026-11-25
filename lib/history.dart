@@ -46,7 +46,7 @@ class _HistoryState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
         const Text('Riwayat', style: kTitle),
         const SizedBox(height: 16),

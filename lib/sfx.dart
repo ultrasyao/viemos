@@ -1,49 +1,45 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 
+/// Taruh suaramu di assets/sounds/ dengan nama click.mp3 / click.wav / click.ogg
 class Sfx {
   Sfx._();
   static bool enabled = true;
-  static final Map<String, AudioPlayer> _players = {};
+  static AudioPlayer? _player;
+  static String? _asset;
+  static int _last = 0;
 
-  static Future<void> warm() async {
-    for (final n in ['tap', 'pop', 'success']) {
-      try {
-        final p = AudioPlayer();
-        _players[n] = p;
-        await p.setPlayerMode(PlayerMode.lowLatency);
-        await p.setSource(AssetSource('sounds/$n.wav'));
-      } catch (_) {}
-    }
-  }
-
-  static Future<void> _play(String name, double vol) async {
-    if (!enabled) return;
+  static Future<void> init() async {
     try {
-      var p = _players[name];
-      if (p == null) {
-        p = AudioPlayer();
-        _players[name] = p;
-        await p.setPlayerMode(PlayerMode.lowLatency);
-      }
-      await p.play(AssetSource('sounds/$name.wav'), volume: vol);
-    } catch (_) {
-      SystemSound.play(SystemSoundType.click);
-    }
+      final m = await AssetManifest.loadFromAssetBundle(rootBundle);
+      final found =
+          m.listAssets().where((a) => a.startsWith('assets/sounds/click.')).toList();
+      if (found.isEmpty) return;
+      _asset = found.first.substring('assets/'.length);
+      final p = AudioPlayer();
+      await p.setPlayerMode(PlayerMode.lowLatency);
+      await p.setSource(AssetSource(_asset!));
+      _player = p;
+    } catch (_) {}
   }
 
-  static void tap() {
-    HapticFeedback.selectionClick();
-    _play('tap', 0.7);
+  static Future<void> warm() => init();
+
+  static void tap() => click();
+
+  static void click() {
+    final p = _player, a = _asset;
+    if (!enabled || p == null || a == null) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _last < 120) return;
+    _last = now;
+    _play(p, a);
   }
 
-  static void pop() {
-    HapticFeedback.lightImpact();
-    _play('pop', 0.8);
-  }
-
-  static void ok() {
-    HapticFeedback.mediumImpact();
-    _play('success', 0.9);
+  static Future<void> _play(AudioPlayer p, String a) async {
+    try {
+      await p.stop();
+      await p.play(AssetSource(a));
+    } catch (_) {}
   }
 }

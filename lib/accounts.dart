@@ -137,7 +137,7 @@ class _AccountsState extends State<AccountsScreen> {
   Widget build(BuildContext context) {
     final total = accs.fold<int>(0, (s, a) => s + a.balance);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
         const Text('Rekening', style: kTitle),
         const SizedBox(height: 16),
