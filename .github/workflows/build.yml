@@ -25,13 +25,17 @@ jobs:
           sed -i 's/android:label="[^"]*"/android:label="Viemos"/' android/app/src/main/AndroidManifest.xml
       - name: Patch Android (izin notifikasi, desugaring)
         run: python3 ci/patch_android.py
-      - name: Naikkan compileSdk
+      - name: Naikkan compileSdk app
         run: sed -i -E 's/compileSdk(Version)?[ =]+flutter\.compileSdkVersion/compileSdk = 36/' android/app/build.gradle*
       - name: Pakai keystore tetap
         run: |
           mkdir -p ~/.android
           cp ci/debug.keystore ~/.android/debug.keystore
       - run: flutter pub get
+      - name: Naikkan compileSdk plugin
+        run: |
+          PC="${PUB_CACHE:-$HOME/.pub-cache}"
+          sed -i -E 's/compileSdk(Version)?[ =]+[0-9]+/compileSdk = 36/' "$PC"/hosted/pub.dev/*/android/build.gradle*
       - run: flutter build apk --release --no-shrink
       - uses: actions/upload-artifact@v4
         with:
