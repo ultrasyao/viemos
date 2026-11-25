@@ -15,12 +15,19 @@ perms = [
     'android.permission.POST_NOTIFICATIONS',
     'android.permission.RECEIVE_BOOT_COMPLETED',
     'android.permission.VIBRATE',
+    # backup otomatis ke folder pilihan user
+    'android.permission.MANAGE_EXTERNAL_STORAGE',
+    'android.permission.READ_EXTERNAL_STORAGE',
+    'android.permission.WRITE_EXTERNAL_STORAGE',
 ]
 add = ''.join(
     f'    <uses-permission android:name="{p}"/>\n' for p in perms if p not in s
 )
 if add:
     s = s.replace('<application', add + '    <application', 1)
+
+if 'requestLegacyExternalStorage' not in s:
+    s = s.replace('<application', '<application android:requestLegacyExternalStorage="true"', 1)
 
 if 'ScheduledNotificationReceiver' not in s:
     receivers = '''

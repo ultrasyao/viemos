@@ -97,6 +97,33 @@ FROM accounts a ORDER BY a.id''');
     _bump();
   }
 
+  /// Ubah transaksi yang sudah ada (jenis, rekening, jumlah, waktu, catatan).
+  Future<void> updateTxn({
+    required int id,
+    required String type,
+    required int accountId,
+    int? toAccountId,
+    required int amount,
+    required DateTime ts,
+    String note = '',
+  }) async {
+    final d = await _d;
+    await d.update(
+      'txns',
+      {
+        'type': type,
+        'account_id': accountId,
+        'to_account_id': toAccountId,
+        'amount': amount,
+        'ts': ts.millisecondsSinceEpoch,
+        'note': note,
+      },
+      where: 'id=?',
+      whereArgs: [id],
+    );
+    _bump();
+  }
+
   Future<void> deleteTxn(int id) async {
     final d = await _d;
     await d.delete('txns', where: 'id=?', whereArgs: [id]);

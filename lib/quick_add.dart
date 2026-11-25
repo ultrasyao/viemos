@@ -185,7 +185,9 @@ class _QuickAddState extends State<QuickAdd> with SingleTickerProviderStateMixin
                 ),
               ),
             ),
-            Positioned(
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 340),
+              curve: Curves.easeOutCubic,
               right: 20,
               bottom: widget.bottom,
               child: AnimatedScale(

@@ -1,22 +1,18 @@
 import 'package:flutter/material.dart';
+import 'app_dialog.dart';
 import 'db.dart';
+import 'txn_dialog.dart';
 import 'ui.dart';
 
-Future<bool> confirmDeleteTxn(BuildContext context) async {
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (c) => AlertDialog(
-      title: const Text('Hapus transaksi?'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Batal')),
-        TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Hapus')),
-      ],
-    ),
-  );
-  return ok == true;
-}
+Future<bool> confirmDeleteTxn(BuildContext context) => confirmDialog(
+      context,
+      title: 'Hapus transaksi?',
+      message: 'Transaksi ini dihapus permanen dan saldo rekening ikut berubah.',
+      confirmText: 'Hapus',
+      danger: true,
+    );
 
-/// Baris transaksi yang bisa digeser ke kiri untuk menghapus.
+/// Baris transaksi: ketuk untuk ubah, geser ke kiri untuk menghapus.
 class TxnSwipe extends StatelessWidget {
   final Txn t;
   final VoidCallback onRemoved;
@@ -36,7 +32,7 @@ class TxnSwipe extends StatelessWidget {
             color: const Color(0x33FF8F85), borderRadius: BorderRadius.circular(22)),
         child: const Icon(Icons.delete_outline, color: kOut),
       ),
-      child: TxnTile(t),
+      child: TxnTile(t, onTap: () => showTxnDialog(context, t.type, edit: t)),
     );
   }
 }
@@ -44,7 +40,8 @@ class TxnSwipe extends StatelessWidget {
 class TxnTile extends StatelessWidget {
   final Txn t;
   final bool timeOnly;
-  const TxnTile(this.t, {super.key, this.timeOnly = false});
+  final VoidCallback? onTap;
+  const TxnTile(this.t, {super.key, this.timeOnly = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +52,7 @@ class TxnTile extends StatelessWidget {
     final where = t.type == 'transfer' ? '${t.accName} → ${t.toName ?? '?'}' : t.accName;
     final when = timeOnly ? '${two(t.ts.hour)}:${two(t.ts.minute)}' : fmtDate(t.ts);
     return GlassCard(
+      onTap: onTap,
       child: Row(
         children: [
           Container(

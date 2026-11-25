@@ -1,7 +1,7 @@
 name: viemos
 description: Pencatat keuangan Viemos
 publish_to: none
-version: 0.4.0+4
+version: 0.5.0+5
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -19,6 +19,7 @@ dependencies:
   file_picker: ^8.1.2
   flutter_local_notifications: ^19.0.0
   timezone: ^0.10.0
+  permission_handler: ^11.3.1
 
 flutter:
   uses-material-design: true

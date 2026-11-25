@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'app_dialog.dart';
+import 'backup.dart';
 import 'db.dart';
 import 'island.dart';
 import 'lock.dart';
@@ -13,7 +16,7 @@ import 'prefs.dart';
 import 'sfx.dart';
 import 'ui.dart';
 
-const kVersion = '0.4.0';
+const kVersion = '0.5.0';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -182,25 +185,16 @@ class _SettingsState extends State<SettingsScreen> {
   }
 
   Future<void> _pickLockAfter() async {
-    const opts = [
-      (0, 'Langsung'),
-      (30, 'Setelah 30 detik'),
-      (60, 'Setelah 1 menit'),
-      (300, 'Setelah 5 menit'),
-    ];
-    final v = await showDialog<int>(
-      context: context,
-      builder: (c) => SimpleDialog(
-        title: const Text('Kunci otomatis'),
-        children: [
-          for (final o in opts)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, o.$1),
-              child: Text(o.$2,
-                  style: TextStyle(color: o.$1 == Prefs.lockAfter ? kOrange : kText)),
-            ),
-        ],
-      ),
+    final v = await choiceDialog<int>(
+      context,
+      title: 'Kunci otomatis',
+      selected: Prefs.lockAfter,
+      options: const [
+        (0, 'Langsung'),
+        (30, 'Setelah 30 detik'),
+        (60, 'Setelah 1 menit'),
+        (300, 'Setelah 5 menit'),
+      ],
     );
     if (v == null) return;
     await Prefs.setLockAfter(v);
@@ -280,6 +274,112 @@ class _SettingsState extends State<SettingsScreen> {
     _ok('Backup disalin', sub: 'Tempel & simpan di tempat aman (catatan, chat sendiri, dll)');
   }
 
+  /// Download: muncul layar "Simpan sebagai" bawaan Android, pilih Download / folder lain.
+  Future<void> _backupDownload() async {
+    final j = await _backupJson();
+    Lock.skipNext();
+    try {
+      final path = await FilePicker.platform.saveFile(
+        dialogTitle: 'Simpan backup',
+        fileName: 'viemos-backup-${_stamp()}.json',
+        bytes: Uint8List.fromList(utf8.encode(j)),
+      );
+      if (path == null) return;
+      final name = path.split('/').last;
+      _ok('Backup tersimpan', sub: name.isEmpty ? path : name, icon: Icons.download_done_rounded);
+    } catch (e) {
+      _bad('Gagal menyimpan backup', sub: '$e');
+    }
+  }
+
+  Future<String?> _pickBackupDir() async {
+    Lock.skipNext();
+    try {
+      final p = await FilePicker.platform.getDirectoryPath(dialogTitle: 'Pilih folder backup');
+      if (p == null) return null;
+      await Prefs.setBackupDir(p);
+      return p;
+    } catch (_) {
+      _bad('Folder tidak bisa dipilih');
+      return null;
+    }
+  }
+
+  Future<void> _toggleAuto(bool on) async {
+    if (!on) {
+      await Prefs.setAutoBackup(false);
+      if (mounted) setState(() {});
+      return;
+    }
+    final dir = Prefs.backupDir ?? await _pickBackupDir();
+    if (dir == null) return;
+    Lock.skipNext();
+    if (!await AutoBackup.ensureAccess()) {
+      _bad('Izin akses penyimpanan ditolak',
+          sub: 'Aktifkan "Akses semua file" untuk Viemos di pengaturan HP');
+      return;
+    }
+    await Prefs.setAutoBackup(true);
+    final err = await AutoBackup.run();
+    if (!mounted) return;
+    setState(() {});
+    if (err == null) {
+      _ok('Backup otomatis aktif', sub: AutoBackup.pretty(dir), icon: Icons.cloud_done_outlined);
+    } else {
+      _bad('Backup otomatis aktif, tapi...', sub: err);
+    }
+  }
+
+  Future<void> _changeDir() async {
+    final p = await _pickBackupDir();
+    if (p == null) return;
+    Lock.skipNext();
+    if (!await AutoBackup.ensureAccess()) {
+      _bad('Izin akses penyimpanan ditolak');
+      return;
+    }
+    final err = await AutoBackup.run();
+    if (!mounted) return;
+    setState(() {});
+    if (err == null) {
+      _ok('Folder backup diganti', sub: AutoBackup.pretty(p), icon: Icons.folder_outlined);
+    } else {
+      _bad('Gagal menulis backup', sub: err);
+    }
+  }
+
+  Future<void> _backupNow() async {
+    Lock.skipNext();
+    if (!await AutoBackup.ensureAccess()) {
+      _bad('Izin akses penyimpanan ditolak');
+      return;
+    }
+    final err = await AutoBackup.run();
+    if (!mounted) return;
+    setState(() {});
+    if (err == null) {
+      _ok('Backup selesai', sub: AutoBackup.pretty(Prefs.backupDir ?? ''), icon: Icons.cloud_done_outlined);
+    } else {
+      _bad('Backup gagal', sub: err);
+    }
+  }
+
+  Future<void> _restoreAuto() async {
+    if (!await _guard()) return;
+    Lock.skipNext();
+    final raw = await AutoBackup.readLatest();
+    if (raw == null) {
+      _bad('Backup otomatis tidak ditemukan', sub: 'Cek folder & izin akses');
+      return;
+    }
+    await _restoreText(raw);
+  }
+
+  String _lastBackupLabel() {
+    final l = Prefs.lastBackup;
+    return l == 0 ? 'Belum pernah' : 'Terakhir ${fmtDate(DateTime.fromMillisecondsSinceEpoch(l))}';
+  }
+
   String _csvCell(String s) => '"${s.replaceAll('"', '""')}"';
 
   Future<void> _exportCsv() async {
@@ -319,18 +419,13 @@ class _SettingsState extends State<SettingsScreen> {
     final a = (data['accounts'] as List?)?.length ?? 0;
     final t = (data['txns'] as List?)?.length ?? 0;
     if (!mounted) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Pulihkan data?'),
-        content: Text('Semua data sekarang akan DIGANTI dengan isi backup: $a rekening, $t transaksi.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Batal')),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Pulihkan')),
-        ],
-      ),
+    final ok = await confirmDialog(
+      context,
+      title: 'Pulihkan data?',
+      message: 'Semua data sekarang akan DIGANTI dengan isi backup: $a rekening, $t transaksi.',
+      confirmText: 'Pulihkan',
     );
-    if (ok != true) return;
+    if (!ok) return;
     try {
       await Db.i.importAll(data);
       _ok('Data dipulihkan', sub: '$a rekening · $t transaksi', icon: Icons.restore_rounded);
@@ -370,21 +465,14 @@ class _SettingsState extends State<SettingsScreen> {
   Future<void> _wipe() async {
     if (!await _guard()) return;
     if (!mounted) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Hapus semua data?'),
-        content: const Text(
-            'Semua rekening dan transaksi dihapus permanen. Buat backup dulu kalau masih perlu.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Batal')),
-          TextButton(
-              onPressed: () => Navigator.pop(c, true),
-              child: const Text('Hapus', style: TextStyle(color: kOut))),
-        ],
-      ),
+    final ok = await confirmDialog(
+      context,
+      title: 'Hapus semua data?',
+      message: 'Semua rekening dan transaksi dihapus permanen. Buat backup dulu kalau masih perlu.',
+      confirmText: 'Hapus',
+      danger: true,
     );
-    if (ok != true) return;
+    if (!ok) return;
     await Db.i.clearAll();
     _ok('Semua data dihapus', icon: Icons.delete_outline_rounded);
   }
@@ -436,20 +524,63 @@ class _SettingsState extends State<SettingsScreen> {
             ),
           _row(icon: Icons.notifications_none_rounded, title: 'Tes notifikasi', onTap: _testNotif),
         ]),
-        _section('Data'),
+        _section('Backup'),
         _group([
           _row(
+            icon: Icons.download_rounded,
+            title: 'Download backup',
+            sub: 'Simpan file .json ke HP — pilih folder Download',
+            onTap: _backupDownload,
+            trailing: _chev(),
+          ),
+          _toggle(
+            icon: Icons.autorenew_rounded,
+            title: 'Backup otomatis',
+            sub: Prefs.autoBackup
+                ? 'Aktif · ${AutoBackup.pretty(Prefs.backupDir ?? '')}'
+                : 'Simpan otomatis tiap ada perubahan ke folder pilihanmu',
+            value: Prefs.autoBackup,
+            on: _toggleAuto,
+          ),
+          if (Prefs.autoBackup) ...[
+            _row(
+              icon: Icons.folder_open_rounded,
+              title: 'Folder backup',
+              sub: AutoBackup.pretty(Prefs.backupDir ?? ''),
+              onTap: _changeDir,
+              trailing: _chev(),
+            ),
+            _row(
+              icon: Icons.backup_outlined,
+              title: 'Backup sekarang',
+              sub: _lastBackupLabel(),
+              onTap: _backupNow,
+            ),
+          ],
+          _row(
               icon: Icons.ios_share_rounded,
-              title: 'Backup ke file',
-              sub: 'Bagikan file .json (simpan ke Download / Drive)',
+              title: 'Bagikan backup',
+              sub: 'Kirim file .json lewat WhatsApp, Drive, dll',
               onTap: _backupShare),
           _row(icon: Icons.copy_rounded, title: 'Backup ke clipboard', onTap: _backupCopy),
+        ]),
+        _section('Pulihkan'),
+        _group([
           _row(
               icon: Icons.restore_rounded,
               title: 'Pulihkan dari file',
               sub: 'Mengganti semua data sekarang',
               onTap: _restoreFile),
+          if (Prefs.autoBackup)
+            _row(
+                icon: Icons.history_rounded,
+                title: 'Pulihkan backup otomatis',
+                sub: 'Dari folder backup terakhir',
+                onTap: _restoreAuto),
           _row(icon: Icons.content_paste_rounded, title: 'Pulihkan dari clipboard', onTap: _restoreClip),
+        ]),
+        _section('Data'),
+        _group([
           _row(
               icon: Icons.table_chart_outlined,
               title: 'Ekspor CSV',

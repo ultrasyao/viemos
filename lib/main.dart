@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'backup.dart';
 import 'lock.dart';
 import 'notif.dart';
 import 'prefs.dart';
@@ -12,6 +13,7 @@ Future<void> main() async {
   await Prefs.load();
   Lock.locked.value = Prefs.hasPin;
   Sfx.warm();
+  AutoBackup.init();
   Notifs.init().then((_) {
     if (Prefs.reminderOn) Notifs.scheduleDaily(Prefs.reminderMin);
   });
@@ -56,12 +58,14 @@ class _RootState extends State<Root> {
 
   @override
   Widget build(BuildContext context) {
+    // Aplikasi sudah ada di bawah; intro di atasnya "membuka" lalu dilepas.
     return AppLock(
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 700),
-        child: introDone
-            ? const Shell(key: ValueKey('shell'))
-            : Intro(key: const ValueKey('intro'), onDone: () => setState(() => introDone = true)),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const Shell(),
+          if (!introDone) Intro(onDone: () => setState(() => introDone = true)),
+        ],
       ),
     );
   }

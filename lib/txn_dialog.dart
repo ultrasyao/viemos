@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_dialog.dart';
 import 'db.dart';
 import 'island.dart';
 import 'money_input.dart';
@@ -12,67 +13,19 @@ IconData _icon(String t) => t == 'in'
     ? Icons.south_west_rounded
     : (t == 'out' ? Icons.north_east_rounded : Icons.swap_horiz_rounded);
 
-Future<void> showTxnDialog(BuildContext context, String type) async {
+/// Buka popup catat transaksi. Kalau [edit] diisi, popup jadi mode ubah
+/// untuk transaksi itu (jenis, rekening, jumlah, waktu & catatan bisa diganti).
+Future<void> showTxnDialog(BuildContext context, String type, {Txn? edit}) async {
   final accs = await Db.i.accounts();
   if (!context.mounted) return;
   if (accs.isEmpty) {
     toast(context, 'Tambah rekening dulu di tab Rekening');
     return;
   }
-  final saved = await showGeneralDialog<SavedTxn>(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: 'Tutup',
-    barrierColor: Colors.black.withAlpha(150),
-    transitionDuration: const Duration(milliseconds: 700),
-    pageBuilder: (_, __, ___) => TxnDialog(type: type, accounts: accs),
-    transitionBuilder: (ctx, a, __, child) {
-      final mq = MediaQuery.of(ctx);
-      final v = a.value;
-      final dropC = Curves.easeOutBack.transform(const Interval(0.0, 0.4).transform(v));
-      final grow =
-          Curves.easeInOutCubic.transform(const Interval(0.36, 1.0).transform(v));
-      final pillOp = const Interval(0.0, 0.15).transform(v) *
-          (1 - const Interval(0.0, 0.5).transform(grow));
-      final pillTop = mq.padding.top + 14;
-      return Stack(
-        children: [
-          Positioned(
-            top: -70 + (pillTop + 70) * dropC,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(
-              child: Center(
-                child: Opacity(
-                  opacity: pillOp.clamp(0.0, 1.0).toDouble(),
-                  child: Transform.scale(
-                    scale: 1 + 0.12 * grow,
-                    child: _Pill(type: type),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: mq.viewInsets.bottom),
-              child: SafeArea(
-                child: Align(
-                  alignment: Alignment(0, -0.9 + 0.9 * grow),
-                  child: Opacity(
-                    opacity: const Interval(0.15, 0.7).transform(grow),
-                    child: Transform.scale(
-                      scale: 0.45 + 0.55 * Curves.easeOutCubic.transform(grow),
-                      child: child,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    },
+  final saved = await showAppDialog<SavedTxn>(
+    context,
+    accent: _accent(type),
+    builder: (_) => TxnDialog(type: type, accounts: accs, edit: edit),
   );
   if (saved != null && context.mounted) {
     final isTf = saved.type == 'transfer';
@@ -81,12 +34,12 @@ Future<void> showTxnDialog(BuildContext context, String type) async {
     final sign = saved.type == 'in' ? '+' : (saved.type == 'out' ? '-' : '');
     showIsland(
       context,
-      title: '${_names[type]} tersimpan',
+      title: saved.edited ? 'Perubahan tersimpan' : '${_names[saved.type]} tersimpan',
       subtitle: sub,
       amount: '$sign${money(saved.amount)}',
-      icon: _icon(type),
-      color: _accent(type),
-      sound: type,
+      icon: saved.edited ? Icons.edit_rounded : _icon(saved.type),
+      color: _accent(saved.type),
+      sound: saved.type,
     );
   }
 }
@@ -95,62 +48,50 @@ class SavedTxn {
   final String type, from, note;
   final String? to;
   final int amount;
-  const SavedTxn(this.type, this.from, this.to, this.amount, this.note);
-}
-
-class _Pill extends StatelessWidget {
-  final String type;
-  const _Pill({required this.type});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = _accent(type);
-    return Material(
-      color: const Color(0xFF111718),
-      elevation: 10,
-      shadowColor: c,
-      shape: StadiumBorder(side: BorderSide(color: c.withAlpha(140), width: 1.5)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 22, 10),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(_icon(type), color: c, size: 22),
-            const SizedBox(width: 10),
-            Text(_names[type]!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          ],
-        ),
-      ),
-    );
-  }
+  final bool edited;
+  const SavedTxn(this.type, this.from, this.to, this.amount, this.note, {this.edited = false});
 }
 
 class TxnDialog extends StatefulWidget {
   final String type;
   final List<Account> accounts;
-  const TxnDialog({super.key, required this.type, required this.accounts});
+  final Txn? edit;
+  const TxnDialog({super.key, required this.type, required this.accounts, this.edit});
 
   @override
   State<TxnDialog> createState() => _TxnDialogState();
 }
 
 class _TxnDialogState extends State<TxnDialog> {
-  late int from = widget.accounts.first.id;
+  late String type = widget.edit?.type ?? widget.type;
+  late int from = _initialFrom();
   int? to;
-  final amountC = TextEditingController();
-  final noteC = TextEditingController();
+  late final amountC = TextEditingController(
+      text: widget.edit == null ? '' : moneyInput(widget.edit!.amount));
+  late final noteC = TextEditingController(text: widget.edit?.note ?? '');
   final amountF = FocusNode();
-  DateTime when = DateTime.now();
+  late DateTime when = widget.edit?.ts ?? DateTime.now();
   String? err;
   bool _busy = false;
 
-  Color get _c => _accent(widget.type);
+  bool get _isEdit => widget.edit != null;
+  Color get _c => _accent(type);
+
+  int _initialFrom() {
+    final e = widget.edit;
+    if (e != null && widget.accounts.any((a) => a.id == e.accountId)) return e.accountId;
+    return widget.accounts.first.id;
+  }
 
   @override
   void initState() {
     super.initState();
+    final e = widget.edit;
+    if (e != null && e.toAccountId != null && widget.accounts.any((a) => a.id == e.toAccountId)) {
+      to = e.toAccountId;
+    }
     _fixTo();
-    Future.delayed(const Duration(milliseconds: 700), () {
+    Future.delayed(const Duration(milliseconds: 600), () {
       if (mounted) amountF.requestFocus();
     });
   }
@@ -188,25 +129,39 @@ class _TxnDialogState extends State<TxnDialog> {
       setState(() => err = 'Isi jumlah dengan benar');
       return;
     }
-    if (widget.type == 'transfer' && (to == null || to == from)) {
+    final isTf = type == 'transfer';
+    if (isTf && (to == null || to == from)) {
       setState(() => err = 'Pilih rekening tujuan yang berbeda');
       return;
     }
     _busy = true;
-    await Db.i.addTxn(
-      type: widget.type,
-      accountId: from,
-      toAccountId: widget.type == 'transfer' ? to : null,
-      amount: amt,
-      ts: when,
-      note: noteC.text.trim(),
-    );
+    final note = noteC.text.trim();
+    if (_isEdit) {
+      await Db.i.updateTxn(
+        id: widget.edit!.id,
+        type: type,
+        accountId: from,
+        toAccountId: isTf ? to : null,
+        amount: amt,
+        ts: when,
+        note: note,
+      );
+    } else {
+      await Db.i.addTxn(
+        type: type,
+        accountId: from,
+        toAccountId: isTf ? to : null,
+        amount: amt,
+        ts: when,
+        note: note,
+      );
+    }
     if (!mounted) return;
     String nameOf(int id) => widget.accounts.firstWhere((a) => a.id == id).name;
     Navigator.pop(
       context,
-      SavedTxn(widget.type, nameOf(from), widget.type == 'transfer' && to != null ? nameOf(to!) : null,
-          amt, noteC.text.trim()),
+      SavedTxn(type, nameOf(from), isTf && to != null ? nameOf(to!) : null, amt, note,
+          edited: _isEdit),
     );
   }
 
@@ -233,117 +188,126 @@ class _TxnDialogState extends State<TxnDialog> {
         ],
       );
 
-  @override
-  Widget build(BuildContext context) {
-    final isTf = widget.type == 'transfer';
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
-        child: SizedBox(
-          width: double.infinity,
-          child: Material(
-            color: const Color(0xFF111718),
-            elevation: 12,
-            shadowColor: _c,
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
-              side: BorderSide(color: _c.withAlpha(90)),
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: _c.withAlpha(40)),
-                        child: Icon(_icon(widget.type), color: _c),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(_names[widget.type]!,
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          Sfx.click();
-                          Navigator.pop(context);
-                        },
-                        icon: const Icon(Icons.close_rounded, color: kMuted),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: amountC,
-                    focusNode: amountF,
-                    inputFormatters: [MoneyFormatter()],
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
-                    decoration: InputDecoration(
-                      hintText: '0',
-                      prefixText: 'Rp ',
-                      prefixStyle: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: _c),
-                      helperText: 'Koma untuk desimal',
+  Widget _typeTabs() => Row(
+        children: [
+          for (final t in const ['in', 'out', 'transfer'])
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: t == 'transfer' ? 0 : 8),
+                child: Bounce(
+                  onTap: () => setState(() {
+                    type = t;
+                    err = null;
+                    _fixTo();
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: type == t ? _accent(t).withAlpha(46) : kCard,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: type == t ? _accent(t) : kBorder),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(_icon(t), size: 18, color: type == t ? _accent(t) : kMuted),
+                        const SizedBox(height: 3),
+                        Text(_names[t]!,
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: type == t ? _accent(t) : kMuted)),
+                      ],
                     ),
                   ),
-                  _lbl(isTf ? 'Dari rekening' : 'Rekening'),
-                  _chips(from, (id) => setState(() {
-                        from = id;
-                        _fixTo();
-                      })),
-                  if (isTf) ...[
-                    _lbl('Ke rekening'),
-                    _chips(to, (id) => setState(() => to = id), exclude: from),
-                  ],
-                  _lbl('Waktu'),
-                  GlassCard(
-                    onTap: () {
-                      Sfx.click();
-                      _pick();
-                    },
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Row(children: [
-                      const Icon(Icons.schedule, color: kMuted, size: 20),
-                      const SizedBox(width: 10),
-                      Text(fmtDate(when)),
-                    ]),
-                  ),
-                  _lbl('Catatan (opsional)'),
-                  TextField(
-                    controller: noteC,
-                    decoration: const InputDecoration(hintText: 'Mis. makan siang'),
-                  ),
-                  if (err != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Text(err!, style: const TextStyle(color: kOut)),
-                    ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: _c, foregroundColor: Colors.black),
-                      onPressed: () {
-                        Sfx.click();
-                        _save();
-                      },
-                      child: const Text('Simpan',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final isTf = type == 'transfer';
+    return AppPanel(
+      accent: _c,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: _c.withAlpha(40)),
+                child: Icon(_icon(type), color: _c),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(_isEdit ? 'Ubah transaksi' : _names[type]!,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+              ),
+              Bounce(
+                onTap: () => Navigator.pop(context),
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.close_rounded, color: kMuted),
+                ),
+              ),
+            ],
           ),
-        ),
+          if (_isEdit) ...[
+            const SizedBox(height: 14),
+            _typeTabs(),
+          ],
+          const SizedBox(height: 14),
+          TextField(
+            controller: amountC,
+            focusNode: amountF,
+            inputFormatters: [MoneyFormatter()],
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
+            decoration: InputDecoration(
+              hintText: '0',
+              prefixText: 'Rp ',
+              prefixStyle: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: _c),
+              helperText: 'Koma untuk desimal',
+            ),
+          ),
+          _lbl(isTf ? 'Dari rekening' : 'Rekening'),
+          _chips(from, (id) => setState(() {
+                from = id;
+                _fixTo();
+              })),
+          if (isTf) ...[
+            _lbl('Ke rekening'),
+            _chips(to, (id) => setState(() => to = id), exclude: from),
+          ],
+          _lbl('Waktu'),
+          GlassCard(
+            onTap: _pick,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(children: [
+              const Icon(Icons.schedule, color: kMuted, size: 20),
+              const SizedBox(width: 10),
+              Text(fmtDate(when)),
+            ]),
+          ),
+          _lbl('Catatan (opsional)'),
+          TextField(
+            controller: noteC,
+            decoration: const InputDecoration(hintText: 'Mis. makan siang'),
+          ),
+          if (err != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(err!, style: const TextStyle(color: kOut)),
+            ),
+          const SizedBox(height: 18),
+          AppButton(_isEdit ? 'Simpan perubahan' : 'Simpan', color: _c, onTap: _save),
+        ],
       ),
     );
   }

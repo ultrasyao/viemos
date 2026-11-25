@@ -48,6 +48,14 @@ class Prefs {
   static Future<void> setReminderOn(bool v) => _p.setBool('reminder_on', v);
   static Future<void> setReminderMin(int v) => _p.setInt('reminder_min', v);
 
+  // ---- backup otomatis
+  static bool get autoBackup => _p.getBool('auto_backup') ?? false;
+  static String? get backupDir => _p.getString('backup_dir');
+  static int get lastBackup => _p.getInt('last_backup') ?? 0;
+  static Future<void> setAutoBackup(bool v) => _p.setBool('auto_backup', v);
+  static Future<void> setBackupDir(String v) => _p.setString('backup_dir', v);
+  static Future<void> setLastBackup(int v) => _p.setInt('last_backup', v);
+
   // ---- PIN (disimpan sebagai hash + salt, bukan PIN asli)
   static bool get hasPin => _p.getString('pin_hash') != null;
   static int get lockAfter => _p.getInt('lock_after') ?? 30; // detik

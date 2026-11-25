@@ -36,6 +36,9 @@ class _HistoryState extends State<HistoryScreen> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
         const Text('Riwayat', style: kTitle),
+        const SizedBox(height: 4),
+        const Text('Ketuk untuk ubah · geser ke kiri untuk hapus',
+            style: TextStyle(color: kMuted, fontSize: 13)),
         const SizedBox(height: 16),
         if (list.isEmpty)
           const Padding(

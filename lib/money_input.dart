@@ -1,5 +1,15 @@
 import 'package:flutter/services.dart';
 
+/// Ubah nilai (sen) jadi teks isian: 1250050 -> "12.500,50", 1250000 -> "12.500".
+String moneyInput(int cents) {
+  final a = cents.abs();
+  final whole = (a ~/ 100)
+      .toString()
+      .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
+  final frac = a % 100;
+  return frac == 0 ? whole : '$whole,${frac.toString().padLeft(2, '0')}';
+}
+
 /// Titik ribuan otomatis. Pakai koma untuk desimal (maks 2 digit).
 class MoneyFormatter extends TextInputFormatter {
   @override

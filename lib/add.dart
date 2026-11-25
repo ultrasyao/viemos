@@ -122,7 +122,7 @@ class _AddTxnState extends State<AddTxnScreen> {
             ],
           ),
         ),
-        label(today.isEmpty ? 'Transaksi hari ini' : 'Transaksi hari ini · ${today.length}'),
+        label(today.isEmpty ? 'Transaksi hari ini' : 'Transaksi hari ini · ${today.length} (ketuk untuk ubah)'),
         if (today.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 28),

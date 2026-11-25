@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'sfx.dart';
+import 'app_dialog.dart';
 import 'db.dart';
+import 'money_input.dart';
+import 'sfx.dart';
 import 'ui.dart';
 
 class _Preset {
@@ -59,79 +61,17 @@ class _AccountsState extends State<AccountsScreen> {
   }
 
   Future<void> _confirmDelete(Account a) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: Text('Hapus ${a.name}?'),
-        content: const Text('Semua transaksi di rekening ini ikut terhapus.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Batal')),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Hapus')),
-        ],
-      ),
+    final ok = await confirmDialog(
+      context,
+      title: 'Hapus ${a.name}?',
+      message: 'Semua transaksi di rekening ini ikut terhapus.',
+      confirmText: 'Hapus',
+      danger: true,
     );
-    if (ok == true) await Db.i.deleteAccount(a.id);
+    if (ok) await Db.i.deleteAccount(a.id);
   }
 
-  void _add() {
-    final nameC = TextEditingController();
-    final balC = TextEditingController();
-    var kind = 'cash';
-    var color = _presets.first.color;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF111718),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, set) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Tambah rekening', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 14),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  for (final p in _presets)
-                    ActionChip(
-                      label: Text(p.name),
-                      onPressed: () => set(() {
-                        nameC.text = p.name;
-                        kind = p.kind;
-                        color = p.color;
-                      }),
-                    ),
-                ]),
-                const SizedBox(height: 14),
-                TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Nama rekening')),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: balC,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Saldo awal (opsional)', prefixText: 'Rp '),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () async {
-                      final n = nameC.text.trim();
-                      if (n.isEmpty) return;
-                      await Db.i.addAccount(n, kind, parseMoney(balC.text) ?? 0, color);
-                      if (ctx.mounted) Navigator.pop(ctx);
-                    },
-                    child: const Text('Simpan'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  void _add() => showAppDialog<void>(context, builder: (_) => const _AddAccount());
 
   @override
   Widget build(BuildContext context) {
@@ -171,9 +111,12 @@ class _AccountsState extends State<AccountsScreen> {
                   const SizedBox(width: 12),
                   Expanded(child: Text(a.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
                   Text(money(a.balance), style: const TextStyle(fontWeight: FontWeight.w600)),
-                  IconButton(
-                    onPressed: () => _confirmDelete(a),
-                    icon: const Icon(Icons.delete_outline, color: kMuted, size: 20),
+                  Bounce(
+                    onTap: () => _confirmDelete(a),
+                    child: const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Icon(Icons.delete_outline, color: kMuted, size: 20),
+                    ),
                   ),
                 ],
               ),
@@ -185,12 +128,89 @@ class _AccountsState extends State<AccountsScreen> {
             child: Center(child: Text('Belum ada rekening', style: TextStyle(color: kMuted))),
           ),
         const SizedBox(height: 6),
-        OutlinedButton.icon(
-          onPressed: () { Sfx.tap(); _add(); },
-          icon: const Icon(Icons.add),
-          label: const Text('Tambah rekening'),
-        ),
+        AppButton('Tambah rekening', icon: Icons.add, outlined: true, onTap: _add),
       ],
+    );
+  }
+}
+
+
+class _AddAccount extends StatefulWidget {
+  const _AddAccount();
+  @override
+  State<_AddAccount> createState() => _AddAccountState();
+}
+
+class _AddAccountState extends State<_AddAccount> {
+  final nameC = TextEditingController();
+  final balC = TextEditingController();
+  var kind = 'cash';
+  var color = _presets.first.color;
+
+  @override
+  void dispose() {
+    nameC.dispose();
+    balC.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final n = nameC.text.trim();
+    if (n.isEmpty) return;
+    await Db.i.addAccount(n, kind, parseMoney(balC.text) ?? 0, color);
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPanel(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text('Tambah rekening',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+              ),
+              Bounce(
+                onTap: () => Navigator.pop(context),
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.close_rounded, color: kMuted),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final p in _presets)
+              ActionChip(
+                label: Text(p.name),
+                onPressed: () {
+                  Sfx.click();
+                  setState(() {
+                    nameC.text = p.name;
+                    kind = p.kind;
+                    color = p.color;
+                  });
+                },
+              ),
+          ]),
+          const SizedBox(height: 14),
+          TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Nama rekening')),
+          const SizedBox(height: 10),
+          TextField(
+            controller: balC,
+            inputFormatters: [MoneyFormatter()],
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'Saldo awal (opsional)', prefixText: 'Rp '),
+          ),
+          const SizedBox(height: 18),
+          AppButton('Simpan', onTap: _save),
+        ],
+      ),
     );
   }
 }
