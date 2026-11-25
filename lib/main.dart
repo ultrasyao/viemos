@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'sfx.dart';
 import 'intro.dart';
 import 'shell.dart';
 import 'ui.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  Sfx.warm();
   runApp(const ViemosApp());
 }
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'accounts.dart';
-import 'txn.dart';
+import 'add.dart';
+import 'history.dart';
+import 'sfx.dart';
 import 'ui.dart';
 
 class Shell extends StatefulWidget {
@@ -155,7 +157,7 @@ class NavPill extends StatelessWidget {
                     Expanded(
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () => onTap(k),
+                        onTap: () { if (k != index) Sfx.tap(); onTap(k); },
                         child: SizedBox(
                           height: 76,
                           child: Center(

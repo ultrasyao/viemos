@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'sfx.dart';
 import 'db.dart';
 import 'ui.dart';
 
@@ -185,7 +186,7 @@ class _AccountsState extends State<AccountsScreen> {
           ),
         const SizedBox(height: 6),
         OutlinedButton.icon(
-          onPressed: _add,
+          onPressed: () { Sfx.tap(); _add(); },
           icon: const Icon(Icons.add),
           label: const Text('Tambah rekening'),
         ),
