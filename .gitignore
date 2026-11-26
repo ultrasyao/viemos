@@ -1,5 +1,18 @@
+# Flutter
 build/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+
+# JANGAN PERNAH di-commit: kunci tanda tangan & rahasia
+*.jks
+*.keystore
+*.p12
+key.properties
+android/key.properties
+.env
+
+# sampah Node (proyek web sisa template)
+node_modules/
+dist/

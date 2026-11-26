@@ -110,6 +110,7 @@ class _RecapState extends State<RecapScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       initialDateRange: range,
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
     );
     if (r != null && mounted) setState(() => range = r);
   }
@@ -243,6 +244,7 @@ class _RecapState extends State<RecapScreen> {
     final bs = _buckets(list);
 
     return ListView(
+      key: const PageStorageKey('page_recap'),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
         const Text('Rekap', style: kTitle),

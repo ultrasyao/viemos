@@ -50,22 +50,30 @@ class _ShellState extends State<Shell> {
     setState(() => compact = v);
   }
 
-  /// Bar bawah mengecil saat konten digulir, membesar lagi setelah berhenti.
+  /// Bar bawah mengecil begitu konten mulai digulir dan DIPERTAHANKAN kecil
+  /// selama masih bergulir (termasuk saat jari berhenti sebentar / meluncur).
+  /// Baru membesar lagi setelah gulir benar-benar berhenti, atau saat sampai
+  /// di paling atas.
   bool _onScroll(ScrollNotification n) {
     if (n.depth != 0) return false;
-    if (n is ScrollUpdateNotification) {
+    if (n is ScrollStartNotification) {
+      _idle?.cancel();
+    } else if (n is ScrollUpdateNotification) {
       final d = n.scrollDelta ?? 0;
-      if (n.metrics.pixels <= 6) {
+      if (n.metrics.pixels <= 4) {
         _idle?.cancel();
         _setCompact(false);
-      } else if (d.abs() > 1.5) {
-        _setCompact(true);
+      } else if (d.abs() > 0.5 || n.dragDetails != null) {
         _idle?.cancel();
-        _idle = Timer(const Duration(milliseconds: 900), () => _setCompact(false));
+        _setCompact(true);
       }
     } else if (n is ScrollEndNotification) {
       _idle?.cancel();
-      _idle = Timer(const Duration(milliseconds: 600), () => _setCompact(false));
+      if (n.metrics.pixels <= 4) {
+        _setCompact(false);
+      } else {
+        _idle = Timer(const Duration(milliseconds: 1500), () => _setCompact(false));
+      }
     }
     return false;
   }

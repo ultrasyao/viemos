@@ -80,6 +80,7 @@ class _AddTxnState extends State<AddTxnScreen> {
     }
     final net = inc - out;
     return ListView(
+      key: const PageStorageKey('page_add'),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
         const Text('Catat transaksi', style: kTitle),
@@ -122,7 +123,7 @@ class _AddTxnState extends State<AddTxnScreen> {
             ],
           ),
         ),
-        label(today.isEmpty ? 'Transaksi hari ini' : 'Transaksi hari ini · ${today.length} (ketuk untuk ubah)'),
+        label(today.isEmpty ? 'Transaksi hari ini' : 'Transaksi hari ini · ${today.length} (ketuk untuk ubah / hapus)'),
         if (today.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 28),

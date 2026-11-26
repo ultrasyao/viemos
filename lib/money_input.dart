@@ -54,3 +54,17 @@ class MoneyFormatter extends TextInputFormatter {
     );
   }
 }
+
+/// Rapikan isian uang mentah (angka + satu koma) jadi teks berformat.
+/// "12500,5" -> "12.500,5"   "0012" -> "12"   "," -> "0,"
+String moneyFormatRaw(String raw) {
+  final s = raw.replaceAll('.', '');
+  final ci = s.indexOf(',');
+  var ip = (ci >= 0 ? s.substring(0, ci) : s).replaceAll(RegExp(r'[^0-9]'), '');
+  String? fp = ci >= 0 ? s.substring(ci + 1).replaceAll(RegExp(r'[^0-9]'), '') : null;
+  if (fp != null && fp.length > 2) fp = fp.substring(0, 2);
+  ip = ip.replaceFirst(RegExp(r'^0+(?=\d)'), '');
+  if (ip.isEmpty && fp != null) ip = '0';
+  final g = ip.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
+  return fp == null ? g : '$g,$fp';
+}

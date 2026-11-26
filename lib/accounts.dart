@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_dialog.dart';
 import 'db.dart';
-import 'money_input.dart';
+import 'kb.dart';
 import 'sfx.dart';
 import 'ui.dart';
 
@@ -64,7 +64,8 @@ class _AccountsState extends State<AccountsScreen> {
     final ok = await confirmDialog(
       context,
       title: 'Hapus ${a.name}?',
-      message: 'Semua transaksi di rekening ini ikut terhapus.',
+      message:
+          'Semua transaksi di rekening ini ikut terhapus, termasuk pindah saldo yang melibatkannya.',
       confirmText: 'Hapus',
       danger: true,
     );
@@ -77,6 +78,7 @@ class _AccountsState extends State<AccountsScreen> {
   Widget build(BuildContext context) {
     final total = accs.fold<int>(0, (s, a) => s + a.balance);
     return ListView(
+      key: const PageStorageKey('page_accounts'),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
         const Text('Rekening', style: kTitle),
@@ -142,8 +144,11 @@ class _AddAccount extends StatefulWidget {
 }
 
 class _AddAccountState extends State<_AddAccount> {
-  final nameC = TextEditingController();
-  final balC = TextEditingController();
+  final nameC = InputCtl(maxLen: 24);
+  final balC = InputCtl(money: true);
+  final _nameKey = GlobalKey();
+  final _balKey = GlobalKey();
+  InputCtl? _active;
   var kind = 'cash';
   var color = _presets.first.color;
 
@@ -154,62 +159,103 @@ class _AddAccountState extends State<_AddAccount> {
     super.dispose();
   }
 
+  void _focus(InputCtl? c, [GlobalKey? k]) {
+    setState(() => _active = c);
+    if (c == null || k == null) return;
+    Future.delayed(const Duration(milliseconds: 330), () {
+      final ctx = k.currentContext;
+      if (ctx != null && mounted) {
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.04,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+  }
+
   Future<void> _save() async {
     final n = nameC.text.trim();
-    if (n.isEmpty) return;
+    if (n.isEmpty) {
+      _focus(nameC, _nameKey);
+      return;
+    }
     await Db.i.addAccount(n, kind, parseMoney(balC.text) ?? 0, color);
     if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    return AppPanel(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text('Tambah rekening',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-              ),
-              Bounce(
-                onTap: () => Navigator.pop(context),
-                child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(Icons.close_rounded, color: kMuted),
+    return PopScope(
+      canPop: _active == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _active != null) setState(() => _active = null);
+      },
+      child: AppPanel(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('Tambah rekening',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final p in _presets)
-              ActionChip(
-                label: Text(p.name),
-                onPressed: () {
-                  Sfx.click();
-                  setState(() {
-                    nameC.text = p.name;
-                    kind = p.kind;
-                    color = p.color;
-                  });
-                },
-              ),
-          ]),
-          const SizedBox(height: 14),
-          TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Nama rekening')),
-          const SizedBox(height: 10),
-          TextField(
-            controller: balC,
-            inputFormatters: [MoneyFormatter()],
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Saldo awal (opsional)', prefixText: 'Rp '),
-          ),
-          const SizedBox(height: 18),
-          AppButton('Simpan', onTap: _save),
-        ],
+                Bounce(
+                  onTap: () => Navigator.pop(context),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(Icons.close_rounded, color: kMuted),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final p in _presets)
+                ActionChip(
+                  label: Text(p.name),
+                  onPressed: () {
+                    Sfx.click();
+                    setState(() {
+                      nameC.set(p.name);
+                      kind = p.kind;
+                      color = p.color;
+                    });
+                  },
+                ),
+            ]),
+            label('Nama rekening'),
+            KbField(
+              key: _nameKey,
+              ctl: nameC,
+              active: _active == nameC,
+              onTap: () => _focus(nameC, _nameKey),
+              hint: 'Mis. BCA, Dompet',
+            ),
+            KbDock(
+              active: _active == nameC ? nameC : null,
+              onDone: () => setState(() => _active = null),
+            ),
+            label('Saldo awal (opsional)'),
+            KbField(
+              key: _balKey,
+              ctl: balC,
+              active: _active == balC,
+              onTap: () => _focus(balC, _balKey),
+              hint: '0',
+              prefix: 'Rp',
+            ),
+            KbDock(
+              active: _active == balC ? balC : null,
+              onDone: () => setState(() => _active = null),
+            ),
+            const SizedBox(height: 18),
+            AppButton('Simpan', onTap: _save),
+          ],
+        ),
       ),
     );
   }

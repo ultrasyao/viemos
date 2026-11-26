@@ -23,6 +23,9 @@ Future<T?> showAppDialog<T>(
   );
 }
 
+/// Transisi popup 3D: panel "jatuh" dari pulau di atas layar, terlipat ke
+/// belakang lalu terbuka rata menghadap kita (ada pantulan kecil di akhir).
+/// TIDAK ada clip sama sekali, jadi cahaya/bayangan panel tidak terpotong.
 Widget _expand(BuildContext ctx, Animation<double> a, Widget child) {
   final bottom = MediaQuery.of(ctx).viewInsets.bottom;
   return AnimatedBuilder(
@@ -30,14 +33,12 @@ Widget _expand(BuildContext ctx, Animation<double> a, Widget child) {
     child: child,
     builder: (_, c) {
       final v = a.value;
-      // posisi: dari tepi atas ke tengah
-      final pos = Curves.easeInOutCubic.transform(const Interval(0.0, 0.9).transform(v));
-      // lebar & tinggi jendela membuka (isi panel terungkap, tidak gepeng)
-      final w = Curves.easeOutCubic.transform(const Interval(0.0, 0.75).transform(v));
-      final h = Curves.easeInOutCubic.transform(const Interval(0.08, 1.0).transform(v));
-      final op = const Interval(0.0, 0.25).transform(v).clamp(0.0, 1.0).toDouble();
-      final inner = const Interval(0.3, 0.85, curve: Curves.easeOut).transform(v);
-      final r = 36 - 10 * h;
+      final pos = Curves.easeOutCubic.transform(const Interval(0.0, 0.85).transform(v));
+      final flip = Curves.easeOutBack.transform(const Interval(0.04, 0.92).transform(v));
+      final grow = Curves.easeOutCubic.transform(const Interval(0.0, 0.7).transform(v));
+      final op = const Interval(0.0, 0.3).transform(v).clamp(0.0, 1.0).toDouble();
+      final angle = (1 - flip) * 1.0; // terlipat ke belakang -> rata
+      final s = 0.72 + 0.28 * grow;
       return Padding(
         padding: EdgeInsets.only(bottom: bottom),
         child: SafeArea(
@@ -45,14 +46,12 @@ Widget _expand(BuildContext ctx, Animation<double> a, Widget child) {
             alignment: Alignment(0, -1 + pos),
             child: Opacity(
               opacity: op,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(r),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  widthFactor: 0.42 + 0.58 * w,
-                  heightFactor: 0.12 + 0.88 * h,
-                  child: Opacity(opacity: inner.clamp(0.0, 1.0).toDouble(), child: c),
-                ),
+              child: Transform(
+                alignment: Alignment.topCenter,
+                transform: persp(0.0011) *
+                    Matrix4.rotationX(angle) *
+                    Matrix4.diagonal3Values(s, s, 1.0),
+                child: c,
               ),
             ),
           ),
@@ -96,6 +95,8 @@ class _CloseSoundState extends State<_CloseSound> {
 }
 
 /// Kartu isi popup (lebar maks 440, bisa discroll kalau kepanjangan).
+/// Cahaya warna [accent] digambar di LUAR kartu; padding luar sengaja longgar
+/// supaya cahayanya tidak terpotong tepi layar.
 class AppPanel extends StatelessWidget {
   final Widget child;
   final Color accent;
@@ -110,21 +111,28 @@ class AppPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 30),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
         child: SizedBox(
           width: double.infinity,
-          child: Material(
-            color: const Color(0xFF111718),
-            elevation: 12,
-            shadowColor: accent,
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF111718),
               borderRadius: BorderRadius.circular(28),
-              side: BorderSide(color: accent.withAlpha(90)),
+              border: Border.all(color: accent.withAlpha(90)),
+              boxShadow: [
+                BoxShadow(color: accent.withAlpha(64), blurRadius: 26, spreadRadius: 1),
+                const BoxShadow(color: Color(0x99000000), blurRadius: 22, offset: Offset(0, 10)),
+              ],
             ),
-            child: SingleChildScrollView(padding: padding, child: child),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(27),
+              child: Material(
+                type: MaterialType.transparency,
+                child: SingleChildScrollView(padding: padding, child: child),
+              ),
+            ),
           ),
         ),
       ),

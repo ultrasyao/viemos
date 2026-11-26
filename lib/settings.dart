@@ -3,11 +3,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'app_dialog.dart';
-import 'backup.dart';
 import 'db.dart';
 import 'island.dart';
 import 'lock.dart';
@@ -16,7 +14,7 @@ import 'prefs.dart';
 import 'sfx.dart';
 import 'ui.dart';
 
-const kVersion = '0.5.0';
+const kVersion = '0.6.0';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -227,7 +225,10 @@ class _SettingsState extends State<SettingsScreen> {
   Future<void> _pickTime() async {
     final m = Prefs.reminderMin;
     final t = await showTimePicker(
-        context: context, initialTime: TimeOfDay(hour: m ~/ 60, minute: m % 60));
+      context: context,
+      initialTime: TimeOfDay(hour: m ~/ 60, minute: m % 60),
+      initialEntryMode: TimePickerEntryMode.dialOnly,
+    );
     if (t == null) return;
     await Prefs.setReminderMin(t.hour * 60 + t.minute);
     if (Prefs.reminderOn) await Notifs.scheduleDaily(Prefs.reminderMin);
@@ -256,6 +257,9 @@ class _SettingsState extends State<SettingsScreen> {
       final f = File('${dir.path}/$name');
       await f.writeAsString(content);
       await Share.shareXFiles([XFile(f.path, mimeType: mime)]);
+      try {
+        await f.delete(); // jangan tinggalkan data keuangan di cache
+      } catch (_) {}
     } catch (e) {
       _bad('Gagal membagikan file', sub: '$e');
     }
@@ -266,12 +270,6 @@ class _SettingsState extends State<SettingsScreen> {
   Future<void> _backupShare() async {
     final j = await _backupJson();
     await _shareText('viemos-backup-${_stamp()}.json', j, 'application/json');
-  }
-
-  Future<void> _backupCopy() async {
-    final j = await _backupJson();
-    await Clipboard.setData(ClipboardData(text: j));
-    _ok('Backup disalin', sub: 'Tempel & simpan di tempat aman (catatan, chat sendiri, dll)');
   }
 
   /// Download: muncul layar "Simpan sebagai" bawaan Android, pilih Download / folder lain.
@@ -290,94 +288,6 @@ class _SettingsState extends State<SettingsScreen> {
     } catch (e) {
       _bad('Gagal menyimpan backup', sub: '$e');
     }
-  }
-
-  Future<String?> _pickBackupDir() async {
-    Lock.skipNext();
-    try {
-      final p = await FilePicker.platform.getDirectoryPath(dialogTitle: 'Pilih folder backup');
-      if (p == null) return null;
-      await Prefs.setBackupDir(p);
-      return p;
-    } catch (_) {
-      _bad('Folder tidak bisa dipilih');
-      return null;
-    }
-  }
-
-  Future<void> _toggleAuto(bool on) async {
-    if (!on) {
-      await Prefs.setAutoBackup(false);
-      if (mounted) setState(() {});
-      return;
-    }
-    final dir = Prefs.backupDir ?? await _pickBackupDir();
-    if (dir == null) return;
-    Lock.skipNext();
-    if (!await AutoBackup.ensureAccess()) {
-      _bad('Izin akses penyimpanan ditolak',
-          sub: 'Aktifkan "Akses semua file" untuk Viemos di pengaturan HP');
-      return;
-    }
-    await Prefs.setAutoBackup(true);
-    final err = await AutoBackup.run();
-    if (!mounted) return;
-    setState(() {});
-    if (err == null) {
-      _ok('Backup otomatis aktif', sub: AutoBackup.pretty(dir), icon: Icons.cloud_done_outlined);
-    } else {
-      _bad('Backup otomatis aktif, tapi...', sub: err);
-    }
-  }
-
-  Future<void> _changeDir() async {
-    final p = await _pickBackupDir();
-    if (p == null) return;
-    Lock.skipNext();
-    if (!await AutoBackup.ensureAccess()) {
-      _bad('Izin akses penyimpanan ditolak');
-      return;
-    }
-    final err = await AutoBackup.run();
-    if (!mounted) return;
-    setState(() {});
-    if (err == null) {
-      _ok('Folder backup diganti', sub: AutoBackup.pretty(p), icon: Icons.folder_outlined);
-    } else {
-      _bad('Gagal menulis backup', sub: err);
-    }
-  }
-
-  Future<void> _backupNow() async {
-    Lock.skipNext();
-    if (!await AutoBackup.ensureAccess()) {
-      _bad('Izin akses penyimpanan ditolak');
-      return;
-    }
-    final err = await AutoBackup.run();
-    if (!mounted) return;
-    setState(() {});
-    if (err == null) {
-      _ok('Backup selesai', sub: AutoBackup.pretty(Prefs.backupDir ?? ''), icon: Icons.cloud_done_outlined);
-    } else {
-      _bad('Backup gagal', sub: err);
-    }
-  }
-
-  Future<void> _restoreAuto() async {
-    if (!await _guard()) return;
-    Lock.skipNext();
-    final raw = await AutoBackup.readLatest();
-    if (raw == null) {
-      _bad('Backup otomatis tidak ditemukan', sub: 'Cek folder & izin akses');
-      return;
-    }
-    await _restoreText(raw);
-  }
-
-  String _lastBackupLabel() {
-    final l = Prefs.lastBackup;
-    return l == 0 ? 'Belum pernah' : 'Terakhir ${fmtDate(DateTime.fromMillisecondsSinceEpoch(l))}';
   }
 
   String _csvCell(String s) => '"${s.replaceAll('"', '""')}"';
@@ -441,25 +351,14 @@ class _SettingsState extends State<SettingsScreen> {
       final r = await FilePicker.platform.pickFiles(withData: true);
       if (r == null || r.files.isEmpty) return;
       final bytes = r.files.first.bytes;
-      if (bytes == null) {
-        _bad('File tidak bisa dibaca');
+      if (bytes == null || bytes.length > 20 * 1024 * 1024) {
+        _bad('File tidak bisa dibaca', sub: 'Kosong atau terlalu besar');
         return;
       }
       await _restoreText(utf8.decode(bytes));
     } catch (_) {
       _bad('File tidak bisa dibaca');
     }
-  }
-
-  Future<void> _restoreClip() async {
-    if (!await _guard()) return;
-    final c = await Clipboard.getData(Clipboard.kTextPlain);
-    final txt = c?.text;
-    if (txt == null || txt.trim().isEmpty) {
-      _bad('Clipboard kosong', sub: 'Salin isi backup dulu');
-      return;
-    }
-    await _restoreText(txt);
   }
 
   Future<void> _wipe() async {
@@ -482,11 +381,22 @@ class _SettingsState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final pin = Prefs.hasPin;
     return ListView(
+      key: const PageStorageKey('page_settings'),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
       children: [
         const Text('Setting', style: kTitle),
         _section('Keamanan'),
         _group([
+          _toggle(
+            icon: Icons.screenshot_monitor_rounded,
+            title: 'Blokir screenshot',
+            sub: 'Sembunyikan isi app dari tangkapan layar & daftar app terbaru',
+            value: Prefs.secureScreen,
+            on: (v) async {
+              await Prefs.setSecureScreen(v);
+              if (mounted) setState(() {});
+            },
+          ),
           _row(
             icon: pin ? Icons.lock_rounded : Icons.lock_open_rounded,
             title: 'Kunci PIN',
@@ -524,60 +434,25 @@ class _SettingsState extends State<SettingsScreen> {
             ),
           _row(icon: Icons.notifications_none_rounded, title: 'Tes notifikasi', onTap: _testNotif),
         ]),
-        _section('Backup'),
+        _section('Backup & pulihkan'),
         _group([
           _row(
             icon: Icons.download_rounded,
             title: 'Download backup',
-            sub: 'Simpan file .json ke HP — pilih folder Download',
+            sub: 'Simpan file .json ke HP (tidak terenkripsi — simpan di tempat aman)',
             onTap: _backupDownload,
             trailing: _chev(),
           ),
-          _toggle(
-            icon: Icons.autorenew_rounded,
-            title: 'Backup otomatis',
-            sub: Prefs.autoBackup
-                ? 'Aktif · ${AutoBackup.pretty(Prefs.backupDir ?? '')}'
-                : 'Simpan otomatis tiap ada perubahan ke folder pilihanmu',
-            value: Prefs.autoBackup,
-            on: _toggleAuto,
-          ),
-          if (Prefs.autoBackup) ...[
-            _row(
-              icon: Icons.folder_open_rounded,
-              title: 'Folder backup',
-              sub: AutoBackup.pretty(Prefs.backupDir ?? ''),
-              onTap: _changeDir,
-              trailing: _chev(),
-            ),
-            _row(
-              icon: Icons.backup_outlined,
-              title: 'Backup sekarang',
-              sub: _lastBackupLabel(),
-              onTap: _backupNow,
-            ),
-          ],
           _row(
               icon: Icons.ios_share_rounded,
               title: 'Bagikan backup',
               sub: 'Kirim file .json lewat WhatsApp, Drive, dll',
               onTap: _backupShare),
-          _row(icon: Icons.copy_rounded, title: 'Backup ke clipboard', onTap: _backupCopy),
-        ]),
-        _section('Pulihkan'),
-        _group([
           _row(
               icon: Icons.restore_rounded,
               title: 'Pulihkan dari file',
               sub: 'Mengganti semua data sekarang',
               onTap: _restoreFile),
-          if (Prefs.autoBackup)
-            _row(
-                icon: Icons.history_rounded,
-                title: 'Pulihkan backup otomatis',
-                sub: 'Dari folder backup terakhir',
-                onTap: _restoreAuto),
-          _row(icon: Icons.content_paste_rounded, title: 'Pulihkan dari clipboard', onTap: _restoreClip),
         ]),
         _section('Data'),
         _group([

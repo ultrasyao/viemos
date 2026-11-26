@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'backup.dart';
 import 'lock.dart';
 import 'notif.dart';
 import 'prefs.dart';
@@ -13,7 +12,6 @@ Future<void> main() async {
   await Prefs.load();
   Lock.locked.value = Prefs.hasPin;
   Sfx.warm();
-  AutoBackup.init();
   Notifs.init().then((_) {
     if (Prefs.reminderOn) Notifs.scheduleDaily(Prefs.reminderMin);
   });
@@ -55,16 +53,42 @@ class Root extends StatefulWidget {
 
 class _RootState extends State<Root> {
   bool introDone = false;
+  final ValueNotifier<double> _intro = ValueNotifier<double>(0);
+
+  @override
+  void dispose() {
+    _intro.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     // Aplikasi sudah ada di bawah; intro di atasnya "membuka" lalu dilepas.
+    // Saat huruf intro membesar, aplikasi ikut ditarik masuk secara 3D
+    // (mengecil + miring -> rata menghadap kita).
     return AppLock(
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const Shell(),
-          if (!introDone) Intro(onDone: () => setState(() => introDone = true)),
+          ValueListenableBuilder<double>(
+            valueListenable: _intro,
+            child: const Shell(),
+            builder: (_, c, child) {
+              final z = introDone
+                  ? 1.0
+                  : const Interval(0.66, 1.0, curve: Curves.easeOutCubic).transform(c);
+              final sc = 0.9 + 0.1 * z;
+              return Transform(
+                alignment: Alignment.center,
+                transform: persp(0.0009) *
+                    Matrix4.rotationX((1 - z) * 0.18) *
+                    Matrix4.diagonal3Values(sc, sc, 1.0),
+                child: child,
+              );
+            },
+          ),
+          if (!introDone)
+            Intro(progress: _intro, onDone: () => setState(() => introDone = true)),
         ],
       ),
     );

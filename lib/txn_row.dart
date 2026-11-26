@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_dialog.dart';
 import 'db.dart';
+import 'island.dart';
 import 'txn_dialog.dart';
 import 'ui.dart';
 
@@ -12,7 +13,23 @@ Future<bool> confirmDeleteTxn(BuildContext context) => confirmDialog(
       danger: true,
     );
 
-/// Baris transaksi: ketuk untuk ubah, geser ke kiri untuk menghapus.
+void _deletedToast(BuildContext context, Txn t) {
+  final isTf = t.type == 'transfer';
+  final where = isTf ? '${t.accName} → ${t.toName ?? '?'}' : t.accName;
+  final sign = t.type == 'in' ? '+' : (t.type == 'out' ? '-' : '');
+  showIsland(
+    context,
+    title: 'Transaksi dihapus',
+    subtitle: t.note.isEmpty ? where : '$where · ${t.note}',
+    amount: '$sign${money(t.amount)}',
+    icon: Icons.delete_outline_rounded,
+    color: kOut,
+    sound: 'out',
+  );
+}
+
+/// Baris transaksi: ketuk untuk ubah (di dalam ada tombol Hapus),
+/// geser ke kiri ATAU tahan lama untuk menghapus.
 class TxnSwipe extends StatelessWidget {
   final Txn t;
   final VoidCallback onRemoved;
@@ -24,7 +41,10 @@ class TxnSwipe extends StatelessWidget {
       key: ValueKey('txn_${t.id}'),
       direction: DismissDirection.endToStart,
       confirmDismiss: (_) => confirmDeleteTxn(context),
-      onDismissed: (_) => onRemoved(),
+      onDismissed: (_) {
+        _deletedToast(context, t);
+        onRemoved();
+      },
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 22),
@@ -32,7 +52,16 @@ class TxnSwipe extends StatelessWidget {
             color: const Color(0x33FF8F85), borderRadius: BorderRadius.circular(22)),
         child: const Icon(Icons.delete_outline, color: kOut),
       ),
-      child: TxnTile(t, onTap: () => showTxnDialog(context, t.type, edit: t)),
+      child: TxnTile(
+        t,
+        onTap: () => showTxnDialog(context, t.type, edit: t),
+        onLongPress: () async {
+          if (await confirmDeleteTxn(context) && context.mounted) {
+            _deletedToast(context, t);
+            onRemoved();
+          }
+        },
+      ),
     );
   }
 }
@@ -41,7 +70,8 @@ class TxnTile extends StatelessWidget {
   final Txn t;
   final bool timeOnly;
   final VoidCallback? onTap;
-  const TxnTile(this.t, {super.key, this.timeOnly = false, this.onTap});
+  final VoidCallback? onLongPress;
+  const TxnTile(this.t, {super.key, this.timeOnly = false, this.onTap, this.onLongPress});
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +83,7 @@ class TxnTile extends StatelessWidget {
     final when = timeOnly ? '${two(t.ts.hour)}:${two(t.ts.minute)}' : fmtDate(t.ts);
     return GlassCard(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Row(
         children: [
           Container(

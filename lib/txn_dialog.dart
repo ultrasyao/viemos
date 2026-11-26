@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'app_dialog.dart';
 import 'db.dart';
 import 'island.dart';
+import 'kb.dart';
 import 'money_input.dart';
 import 'sfx.dart';
 import 'ui.dart';
@@ -28,22 +29,22 @@ Future<void> showTxnDialog(BuildContext context, String type, {Txn? edit}) async
     builder: (_) => TxnDialog(type: type, accounts: accs, edit: edit),
   );
   if (saved != null && context.mounted) {
+    final isTf = saved.type == 'transfer';
+    final where = isTf ? '${saved.from} → ${saved.to ?? '?'}' : saved.from;
+    final sub = saved.note.isEmpty ? where : '$where · ${saved.note}';
+    final sign = saved.type == 'in' ? '+' : (saved.type == 'out' ? '-' : '');
     if (saved.deleted) {
       showIsland(
         context,
         title: 'Transaksi dihapus',
-        subtitle: 'Riwayat dan saldo rekening telah diperbarui',
-        amount: money(saved.amount),
+        subtitle: sub,
+        amount: '$sign${money(saved.amount)}',
         icon: Icons.delete_outline_rounded,
         color: kOut,
         sound: 'out',
       );
       return;
     }
-    final isTf = saved.type == 'transfer';
-    final where = isTf ? '${saved.from} → ${saved.to ?? '?'}' : saved.from;
-    final sub = saved.note.isEmpty ? where : '$where · ${saved.note}';
-    final sign = saved.type == 'in' ? '+' : (saved.type == 'out' ? '-' : '');
     showIsland(
       context,
       title: saved.edited ? 'Perubahan tersimpan' : '${_names[saved.type]} tersimpan',
@@ -60,7 +61,8 @@ class SavedTxn {
   final String type, from, note;
   final String? to;
   final int amount;
-  final bool edited, deleted;
+  final bool edited;
+  final bool deleted;
   const SavedTxn(this.type, this.from, this.to, this.amount, this.note,
       {this.edited = false, this.deleted = false});
 }
@@ -79,10 +81,12 @@ class _TxnDialogState extends State<TxnDialog> {
   late String type = widget.edit?.type ?? widget.type;
   late int from = _initialFrom();
   int? to;
-  late final amountC = TextEditingController(
-      text: widget.edit == null ? '' : moneyInput(widget.edit!.amount));
-  late final noteC = TextEditingController(text: widget.edit?.note ?? '');
-  bool _showAmountPad = true;
+  late final amountC = InputCtl(
+      money: true, text: widget.edit == null ? '' : moneyInput(widget.edit!.amount));
+  late final noteC = InputCtl(maxLen: 60, text: widget.edit?.note ?? '');
+  final _amountKey = GlobalKey();
+  final _noteKey = GlobalKey();
+  InputCtl? _active;
   late DateTime when = widget.edit?.ts ?? DateTime.now();
   String? err;
   bool _busy = false;
@@ -104,6 +108,29 @@ class _TxnDialogState extends State<TxnDialog> {
       to = e.toAccountId;
     }
     _fixTo();
+    if (!_isEdit) {
+      // transaksi baru: langsung siap ketik nominal
+      Future.delayed(const Duration(milliseconds: 650), () {
+        if (mounted && _active == null) _focus(amountC, _amountKey);
+      });
+    }
+  }
+
+  /// Pindahkan keyboard Viemos ke kolom [c] dan gulir kolomnya ke tempat terlihat.
+  void _focus(InputCtl? c, [GlobalKey? k]) {
+    setState(() => _active = c);
+    if (c == null || k == null) return;
+    Future.delayed(const Duration(milliseconds: 330), () {
+      final ctx = k.currentContext;
+      if (ctx != null && mounted) {
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.04,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
   }
 
   @override
@@ -124,141 +151,16 @@ class _TxnDialogState extends State<TxnDialog> {
       initialDate: when,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
     );
     if (d == null || !mounted) return;
-    final t = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(when));
+    final t = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(when),
+      initialEntryMode: TimePickerEntryMode.dialOnly,
+    );
     if (t == null) return;
     setState(() => when = DateTime(d.year, d.month, d.day, t.hour, t.minute));
-  }
-
-  void _setAmountKey(String key) {
-    final current = amountC.text;
-    var raw = current.replaceAll('.', '');
-    if (key == '⌫') {
-      if (raw.isNotEmpty) raw = raw.substring(0, raw.length - 1);
-    } else if (key == 'C') {
-      raw = '';
-    } else if (key == ',') {
-      if (raw.contains(',')) return;
-      raw = raw.isEmpty ? '0,' : '$raw,';
-    } else {
-      final comma = raw.indexOf(',');
-      if (comma >= 0 && raw.length - comma - 1 >= 2) return;
-      if (raw == '0') {
-        raw = key;
-      } else {
-        raw += key;
-      }
-    }
-    final formatted = MoneyFormatter().formatEditUpdate(
-      TextEditingValue(text: current, selection: TextSelection.collapsed(offset: current.length)),
-      TextEditingValue(text: raw, selection: TextSelection.collapsed(offset: raw.length)),
-    );
-    setState(() {
-      amountC.value = formatted;
-      _showAmountPad = true;
-      err = null;
-    });
-  }
-
-  Widget _amountKeyboard() {
-    const rows = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      [',', '0', '⌫'],
-    ];
-    Widget key(String value) {
-      final special = value == '⌫' || value == ',';
-      return Expanded(
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Material(
-            color: special ? _c.withAlpha(28) : kCard,
-            borderRadius: BorderRadius.circular(13),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(13),
-              onTap: () {
-                Sfx.click();
-                _setAmountKey(value);
-              },
-              child: SizedBox(
-                height: 46,
-                child: Center(
-                  child: value == '⌫'
-                      ? Icon(Icons.backspace_outlined, color: _c, size: 20)
-                      : Text(value, style: TextStyle(
-                          color: special ? _c : kText,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                        )),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
-      child: _showAmountPad
-          ? Container(
-              margin: const EdgeInsets.only(top: 10),
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0C1112),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: kBorder),
-              ),
-              child: Column(
-                children: [
-                  for (final row in rows)
-                    Row(children: [for (final value in row) key(value)]),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton.icon(
-                          onPressed: () => _setAmountKey('C'),
-                          icon: const Icon(Icons.clear_rounded, size: 17),
-                          label: const Text('Bersihkan'),
-                          style: TextButton.styleFrom(foregroundColor: kMuted),
-                        ),
-                      ),
-                      Expanded(
-                        child: TextButton.icon(
-                          onPressed: () => setState(() => _showAmountPad = false),
-                          icon: const Icon(Icons.keyboard_hide_rounded, size: 17),
-                          label: const Text('Tutup'),
-                          style: TextButton.styleFrom(foregroundColor: _c),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            )
-          : const SizedBox.shrink(),
-    );
-  }
-
-  Future<void> _delete() async {
-    if (_busy || widget.edit == null) return;
-    final ok = await confirmDialog(
-      context,
-      title: 'Hapus transaksi?',
-      message: 'Transaksi ini akan dihapus permanen dan saldo rekening akan dihitung ulang.',
-      confirmText: 'Hapus',
-      danger: true,
-    );
-    if (!ok || !mounted) return;
-    _busy = true;
-    await Db.i.deleteTxn(widget.edit!.id);
-    if (!mounted) return;
-    Navigator.pop(
-      context,
-      SavedTxn(type, '', null, widget.edit!.amount, '', deleted: true),
-    );
   }
 
   Future<void> _save() async {
@@ -301,6 +203,35 @@ class _TxnDialogState extends State<TxnDialog> {
       context,
       SavedTxn(type, nameOf(from), isTf && to != null ? nameOf(to!) : null, amt, note,
           edited: _isEdit),
+    );
+  }
+
+  Future<void> _delete() async {
+    final e = widget.edit;
+    if (_busy || e == null) return;
+    final ok = await confirmDialog(
+      context,
+      title: 'Hapus transaksi?',
+      message: 'Transaksi ini dihapus permanen dan saldo rekening ikut berubah.',
+      confirmText: 'Hapus',
+      danger: true,
+    );
+    if (!ok || !mounted) return;
+    _busy = true;
+    await Db.i.deleteTxn(e.id);
+    if (!mounted) return;
+    String nameOf(int id) {
+      for (final a in widget.accounts) {
+        if (a.id == id) return a.name;
+      }
+      return e.accName;
+    }
+
+    Navigator.pop(
+      context,
+      SavedTxn(e.type, nameOf(e.accountId), e.toAccountId == null ? null : nameOf(e.toAccountId!),
+          e.amount, e.note,
+          deleted: true),
     );
   }
 
@@ -368,94 +299,121 @@ class _TxnDialogState extends State<TxnDialog> {
   @override
   Widget build(BuildContext context) {
     final isTf = type == 'transfer';
-    return AppPanel(
-      accent: _c,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: _c.withAlpha(40)),
-                child: Icon(_icon(type), color: _c),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(_isEdit ? 'Ubah transaksi' : _names[type]!,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-              ),
-              if (_isEdit)
+    return PopScope(
+      // tombol back: tutup keyboard Viemos dulu, baru popup
+      canPop: _active == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _active != null) setState(() => _active = null);
+      },
+      child: AppPanel(
+        accent: _c,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: _c.withAlpha(40)),
+                  child: Icon(_icon(type), color: _c),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(_isEdit ? 'Ubah transaksi' : _names[type]!,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                ),
                 Bounce(
-                  onTap: _delete,
+                  onTap: () => Navigator.pop(context),
                   child: const Padding(
                     padding: EdgeInsets.all(8),
-                    child: Icon(Icons.delete_outline_rounded, color: kOut),
+                    child: Icon(Icons.close_rounded, color: kMuted),
                   ),
                 ),
-              Bounce(
-                onTap: () => Navigator.pop(context),
-                child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(Icons.close_rounded, color: kMuted),
-                ),
-              ),
+              ],
+            ),
+            if (_isEdit) ...[
+              const SizedBox(height: 14),
+              _typeTabs(),
             ],
-          ),
-          if (_isEdit) ...[
             const SizedBox(height: 14),
-            _typeTabs(),
-          ],
-          const SizedBox(height: 14),
-          TextField(
-            controller: amountC,
-            readOnly: true,
-            showCursor: false,
-            onTap: () => setState(() => _showAmountPad = true),
-            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
-            decoration: InputDecoration(
-              hintText: '0',
-              prefixText: 'Rp ',
-              prefixStyle: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: _c),
-              helperText: 'Gunakan keypad Viemos di bawah',
+            KbField(
+              key: _amountKey,
+              ctl: amountC,
+              active: _active == amountC,
+              onTap: () => _focus(amountC, _amountKey),
+              hint: '0',
+              prefix: 'Rp',
+              accent: _c,
+              style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
+              helper: 'Koma untuk desimal',
             ),
-          ),
-          _amountKeyboard(),
-          _lbl(isTf ? 'Dari rekening' : 'Rekening'),
-          _chips(from, (id) => setState(() {
-                from = id;
-                _fixTo();
-              })),
-          if (isTf) ...[
-            _lbl('Ke rekening'),
-            _chips(to, (id) => setState(() => to = id), exclude: from),
-          ],
-          _lbl('Waktu'),
-          GlassCard(
-            onTap: _pick,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(children: [
-              const Icon(Icons.schedule, color: kMuted, size: 20),
-              const SizedBox(width: 10),
-              Text(fmtDate(when)),
-            ]),
-          ),
-          _lbl('Catatan (opsional)'),
-          TextField(
-            controller: noteC,
-            decoration: const InputDecoration(hintText: 'Mis. makan siang'),
-          ),
-          if (err != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(err!, style: const TextStyle(color: kOut)),
+            KbDock(
+              active: _active == amountC ? amountC : null,
+              accent: _c,
+              onDone: () => setState(() => _active = null),
             ),
-          const SizedBox(height: 18),
-          AppButton(_isEdit ? 'Simpan perubahan' : 'Simpan', color: _c, onTap: _save),
-        ],
+            _lbl(isTf ? 'Dari rekening' : 'Rekening'),
+            _chips(from, (id) => setState(() {
+                  from = id;
+                  _fixTo();
+                })),
+            if (isTf) ...[
+              _lbl('Ke rekening'),
+              _chips(to, (id) => setState(() => to = id), exclude: from),
+            ],
+            _lbl('Waktu'),
+            GlassCard(
+              onTap: _pick,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(children: [
+                const Icon(Icons.schedule, color: kMuted, size: 20),
+                const SizedBox(width: 10),
+                Text(fmtDate(when)),
+              ]),
+            ),
+            _lbl('Catatan (opsional)'),
+            KbField(
+              key: _noteKey,
+              ctl: noteC,
+              active: _active == noteC,
+              onTap: () => _focus(noteC, _noteKey),
+              hint: 'Mis. makan siang',
+              accent: _c,
+              maxLines: 2,
+            ),
+            KbDock(
+              active: _active == noteC ? noteC : null,
+              accent: _c,
+              onDone: () => setState(() => _active = null),
+            ),
+            if (err != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(err!, style: const TextStyle(color: kOut)),
+              ),
+            const SizedBox(height: 18),
+            if (_isEdit)
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: AppButton('Hapus',
+                        outlined: true,
+                        fg: kOut,
+                        icon: Icons.delete_outline_rounded,
+                        onTap: _delete),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 3, child: AppButton('Simpan', color: _c, onTap: _save)),
+                ],
+              )
+            else
+              AppButton('Simpan', color: _c, onTap: _save),
+          ],
+        ),
       ),
     );
   }

@@ -14,6 +14,9 @@ const kTitle = TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: kText
 
 bool kDecimals = false;
 
+/// Matriks perspektif untuk efek 3D (dipakai bareng rotateX/rotateY/translate z).
+Matrix4 persp([double p = 0.0012]) => Matrix4.identity()..setEntry(3, 2, p);
+
 String money(int cents, {bool? dec}) {
   final showDec = dec ?? kDecimals;
   final neg = cents < 0;
@@ -109,6 +112,7 @@ class AppButton extends StatelessWidget {
   final bool outlined;
   final IconData? icon;
   final double height;
+  final Color? fg;
   const AppButton(
     this.text, {
     super.key,
@@ -117,11 +121,12 @@ class AppButton extends StatelessWidget {
     this.outlined = false,
     this.icon,
     this.height = 52,
+    this.fg,
   });
 
   @override
   Widget build(BuildContext context) {
-    final fg = outlined ? kText : Colors.black;
+    final fg = this.fg ?? (outlined ? kText : Colors.black);
     return Bounce(
       onTap: onTap,
       child: Container(
@@ -130,7 +135,7 @@ class AppButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: outlined ? Colors.transparent : color,
           borderRadius: BorderRadius.circular(18),
-          border: outlined ? Border.all(color: kBorder, width: 1.5) : null,
+          border: outlined ? Border.all(color: this.fg ?? kBorder, width: 1.5) : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -148,7 +153,14 @@ class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
   final VoidCallback? onTap;
-  const GlassCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap});
+  final VoidCallback? onLongPress;
+  const GlassCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.onTap,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +172,6 @@ class GlassCard extends StatelessWidget {
       ),
       child: Padding(padding: padding, child: child),
     );
-    return onTap == null ? card : Bounce(onTap: onTap, scale: 0.97, child: card);
+    return onTap == null ? card : Bounce(onTap: onTap, onLongPress: onLongPress, scale: 0.97, child: card);
   }
 }

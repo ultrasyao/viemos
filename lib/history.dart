@@ -33,11 +33,12 @@ class _HistoryState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      key: const PageStorageKey('page_history'),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
         const Text('Riwayat', style: kTitle),
         const SizedBox(height: 4),
-        const Text('Ketuk untuk ubah · geser ke kiri untuk hapus',
+        const Text('Ketuk untuk ubah / hapus · geser ke kiri atau tahan lama untuk hapus cepat',
             style: TextStyle(color: kMuted, fontSize: 13)),
         const SizedBox(height: 16),
         if (list.isEmpty)

@@ -171,6 +171,23 @@ FROM accounts a ORDER BY a.id''');
     if (data['app'] != 'viemos' || accs is! List || txs is! List) {
       throw const FormatException('Format backup tidak dikenali');
     }
+    // validasi dulu SEBELUM menyentuh data lama
+    const okTypes = {'in', 'out', 'transfer'};
+    final ids = <int>{};
+    for (final raw in accs) {
+      if (raw is! Map || raw['name'] is! String || raw['kind'] is! String) {
+        throw const FormatException('Data rekening tidak valid');
+      }
+      ids.add((raw['id'] as num).toInt());
+    }
+    for (final raw in txs) {
+      if (raw is! Map ||
+          !okTypes.contains(raw['type']) ||
+          !ids.contains((raw['account_id'] as num).toInt()) ||
+          (raw['amount'] as num).toInt() <= 0) {
+        throw const FormatException('Data transaksi tidak valid');
+      }
+    }
     final d = await _d;
     await d.transaction((t) async {
       await t.delete('txns');
