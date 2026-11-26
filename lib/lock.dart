@@ -160,7 +160,7 @@ class _PinBg extends StatelessWidget {
 /// Koin 3D berisi ikon gembok: bergoyang pelan (ada "tebal" di sisinya),
 /// berputar & jadi gembok terbuka hijau saat PIN benar, merah saat salah.
 class _LockCoin extends StatefulWidget {
-  final ValueListenable<int> status; // 0 biasa, 1 salah, 2 benar
+  final ValueNotifier<int> status; // 0 biasa, 1 salah, 2 benar
   const _LockCoin({required this.status});
   @override
   State<_LockCoin> createState() => _LockCoinState();
