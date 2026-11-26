@@ -9,6 +9,7 @@ import 'settings.dart';
 import 'sfx.dart';
 import 'txn_dialog.dart';
 import 'ui.dart';
+import 'theme.dart';
 
 const double _pillFull = 76;
 const double _pillSmall = 54;
@@ -91,14 +92,7 @@ class _ShellState extends State<Shell> {
     final safeBottom = MediaQuery.of(context).padding.bottom;
     return Scaffold(
       body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0A0D0E), Color(0xFF0A0D0E), Color(0xFF2B1B21)],
-            stops: [0, 0.6, 1],
-          ),
-        ),
+        decoration: kBgDecoration,
         child: Stack(
           children: [
             Positioned.fill(
@@ -255,7 +249,7 @@ class _NavPillState extends State<NavPill> {
                         width: w,
                         height: barH,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF171E1F),
+                          color: Pal.fab,
                           borderRadius: BorderRadius.circular(barH / 2),
                           border: Border.all(color: kBorder),
                         ),
@@ -273,7 +267,7 @@ class _NavPillState extends State<NavPill> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(color: kOrange, width: 3 - t),
-                              boxShadow: const [
+                              boxShadow: [
                                 BoxShadow(color: kGlow, blurRadius: 26, spreadRadius: 4)
                               ],
                             ),

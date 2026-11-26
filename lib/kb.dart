@@ -1,9 +1,11 @@
+import 'strings.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'money_input.dart';
 import 'sfx.dart';
+import 'theme.dart';
 import 'ui.dart';
 
 /// Isi satu kolom yang diketik lewat keyboard Viemos (bukan keyboard HP).
@@ -63,8 +65,8 @@ class KbField extends StatelessWidget {
   final String hint;
   final String? prefix;
   final String? helper;
-  final TextStyle style;
-  final Color accent;
+  final TextStyle? style;
+  final Color? accent;
   final int? maxLines;
 
   const KbField({
@@ -75,13 +77,15 @@ class KbField extends StatelessWidget {
     this.hint = '',
     this.prefix,
     this.helper,
-    this.style = const TextStyle(fontSize: 16, color: kText),
-    this.accent = kOrange,
+    this.style,
+    this.accent,
     this.maxLines,
   });
 
   @override
   Widget build(BuildContext context) {
+    final accent = this.accent ?? kOrange;
+    final style = this.style ?? TextStyle(fontSize: 16, color: kText);
     final h = (style.fontSize ?? 16) * 1.15;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -144,7 +148,7 @@ class KbField extends StatelessWidget {
           if (helper != null)
             Padding(
               padding: const EdgeInsets.only(left: 6, top: 5),
-              child: Text(helper!, style: const TextStyle(color: kMuted, fontSize: 11.5)),
+              child: Text(helper!, style: TextStyle(color: kMuted, fontSize: 11.5)),
             ),
         ],
       ),
@@ -210,11 +214,11 @@ class Kb {
   /// Tampilkan keyboard untuk [ctl]. [onClosed] dipanggil saat keyboard
   /// ditutup (tombol Selesai / tarik ke bawah / [close]).
   static void open(BuildContext context, InputCtl ctl,
-      {Color accent = kOrange, VoidCallback? onClosed}) {
+      {Color? accent, VoidCallback? onClosed}) {
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) return;
     _onClosed = onClosed;
-    _active.value = (ctl, accent);
+    _active.value = (ctl, accent ?? kOrange);
     final safe = MediaQuery.paddingOf(overlay.context).bottom;
     inset.value = rowsHeight(ctl) + _extra + safe;
     final e = _entry;
@@ -324,7 +328,7 @@ class _KbSheetState extends State<_KbSheet> with SingleTickerProviderStateMixin 
                 child: Container(
                   padding: EdgeInsets.fromLTRB(10, 8, 10, 6 + safe + 24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0C1213),
+                    color: kSheet,
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                     border: Border(top: BorderSide(color: accent.withAlpha(120), width: 1.2)),
                     boxShadow: [
@@ -371,14 +375,14 @@ class _KbSheetState extends State<_KbSheet> with SingleTickerProviderStateMixin 
 class AppKeyboard extends StatefulWidget {
   final InputCtl ctl;
   final VoidCallback onDone;
-  final Color accent;
+  final Color? accent;
   final Animation<double> anim; // 0..1 progres naiknya sheet (untuk stagger baris)
   const AppKeyboard({
     super.key,
     required this.ctl,
     required this.onDone,
     required this.anim,
-    this.accent = kOrange,
+    this.accent,
   });
 
   @override
@@ -452,7 +456,7 @@ class _AppKeyboardState extends State<AppKeyboard> {
             special: true,
             repeat: true,
             onTap: _back,
-            child: const Icon(Icons.backspace_outlined, color: kMuted, size: 22),
+            child: Icon(Icons.backspace_outlined, color: kMuted, size: 22),
           ),
         ]),
         _row(2, [
@@ -468,7 +472,7 @@ class _AppKeyboardState extends State<AppKeyboard> {
                 widget.ctl.type('0');
               }
             },
-            child: const Text('000',
+            child: Text('000',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: kMuted)),
           ),
         ]),
@@ -480,7 +484,7 @@ class _AppKeyboardState extends State<AppKeyboard> {
             height: 50,
             special: true,
             onTap: () => _type(','),
-            child: const Text(',',
+            child: Text(',',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: kMuted)),
           ),
         ]),
@@ -489,15 +493,15 @@ class _AppKeyboardState extends State<AppKeyboard> {
           KbKey(
             flex: 2,
             height: 50,
-            fill: widget.accent,
+            fill: (widget.accent ?? kOrange),
             onTap: widget.onDone,
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.check_rounded, color: Colors.black, size: 22),
+                Icon(Icons.check_rounded, color: kOnAccent, size: 22),
                 SizedBox(width: 6),
-                Text('Selesai',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black)),
+                Text(tr('Selesai'),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kOnAccent)),
               ],
             ),
           ),
@@ -541,14 +545,14 @@ class _AppKeyboardState extends State<AppKeyboard> {
             flex: 3,
             height: 44,
             special: true,
-            fill: (!_sym && _shift) ? widget.accent.withAlpha(60) : null,
+            fill: (!_sym && _shift) ? (widget.accent ?? kOrange).withAlpha(60) : null,
             onTap: () {
               _buzz();
               if (!_sym) setState(() => _shift = !_shift);
             },
             child: Icon(
               _sym ? Icons.more_horiz_rounded : Icons.keyboard_capslock_rounded,
-              color: (!_sym && _shift) ? widget.accent : kMuted,
+              color: (!_sym && _shift) ? (widget.accent ?? kOrange) : kMuted,
               size: 22,
             ),
           ),
@@ -559,7 +563,7 @@ class _AppKeyboardState extends State<AppKeyboard> {
             special: true,
             repeat: true,
             onTap: _back,
-            child: const Icon(Icons.backspace_outlined, color: kMuted, size: 22),
+            child: Icon(Icons.backspace_outlined, color: kMuted, size: 22),
           ),
         ]),
         _row(0, [
@@ -572,21 +576,21 @@ class _AppKeyboardState extends State<AppKeyboard> {
               setState(() => _sym = !_sym);
             },
             child: Text(_sym ? 'ABC' : '?123',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: kMuted)),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: kMuted)),
           ),
           KbKey(
             flex: 8,
             height: 44,
             onTap: () => _type(' '),
-            child: const Text('spasi', style: TextStyle(fontSize: 13, color: kMuted)),
+            child: Text(tr('spasi'), style: TextStyle(fontSize: 13, color: kMuted)),
           ),
           KbKey(
             flex: 5,
             height: 44,
-            fill: widget.accent,
+            fill: (widget.accent ?? kOrange),
             onTap: widget.onDone,
-            child: const Text('Selesai',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.black)),
+            child: Text(tr('Selesai'),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: kOnAccent)),
           ),
         ], last: true),
       ],
@@ -644,7 +648,7 @@ class _KbKeyState extends State<KbKey> {
   @override
   Widget build(BuildContext context) {
     final fill = widget.fill ??
-        (widget.special ? const Color(0xFF1E282A) : const Color(0xFF182022));
+        (widget.special ? Pal.keySpecial : Pal.key);
     final depth = _down ? 1.0 : 4.0;
     return Expanded(
       flex: widget.flex,
@@ -697,7 +701,7 @@ class _KbKeyState extends State<KbKey> {
                 borderRadius: BorderRadius.circular(13),
                 border: Border.all(color: _down ? kOrange.withAlpha(150) : kBorder),
                 boxShadow: [
-                  BoxShadow(color: const Color(0xFF040607), offset: Offset(0, depth)),
+                  BoxShadow(color: Pal.keyShadow, offset: Offset(0, depth)),
                   if (_down) BoxShadow(color: kGlow, blurRadius: 14),
                 ],
               ),

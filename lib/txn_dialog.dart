@@ -1,3 +1,4 @@
+import 'strings.dart';
 import 'package:flutter/material.dart';
 import 'app_dialog.dart';
 import 'db.dart';
@@ -7,7 +8,7 @@ import 'money_input.dart';
 import 'sfx.dart';
 import 'ui.dart';
 
-const _names = {'in': 'Pemasukan', 'out': 'Pengeluaran', 'transfer': 'Pindah saldo'};
+Map<String, String> get _names => {'in': tr('Pemasukan'), 'out': tr('Pengeluaran'), 'transfer': tr('Pindah saldo')};
 
 Color _accent(String t) => t == 'in' ? kIn : (t == 'out' ? kOut : kOrange);
 IconData _icon(String t) => t == 'in'
@@ -20,7 +21,7 @@ Future<void> showTxnDialog(BuildContext context, String type, {Txn? edit}) async
   final accs = await Db.i.accounts();
   if (!context.mounted) return;
   if (accs.isEmpty) {
-    toast(context, 'Tambah rekening dulu di tab Rekening');
+    toast(context, tr('Tambah rekening dulu di tab Rekening'));
     return;
   }
   final saved = await showAppDialog<SavedTxn>(
@@ -36,7 +37,7 @@ Future<void> showTxnDialog(BuildContext context, String type, {Txn? edit}) async
     if (saved.deleted) {
       showIsland(
         context,
-        title: 'Transaksi dihapus',
+        title: tr('Transaksi dihapus'),
         subtitle: sub,
         amount: '$sign${money(saved.amount)}',
         icon: Icons.delete_outline_rounded,
@@ -47,7 +48,7 @@ Future<void> showTxnDialog(BuildContext context, String type, {Txn? edit}) async
     }
     showIsland(
       context,
-      title: saved.edited ? 'Perubahan tersimpan' : '${_names[saved.type]} tersimpan',
+      title: saved.edited ? tr('Perubahan tersimpan') : trf('{n} tersimpan', {'n': _names[saved.type]}),
       subtitle: sub,
       amount: '$sign${money(saved.amount)}',
       icon: saved.edited ? Icons.edit_rounded : _icon(saved.type),
@@ -176,12 +177,12 @@ class _TxnDialogState extends State<TxnDialog> {
     if (_busy) return;
     final amt = parseMoney(amountC.text);
     if (amt == null || amt <= 0) {
-      setState(() => err = 'Isi jumlah dengan benar');
+      setState(() => err = tr('Isi jumlah dengan benar'));
       return;
     }
     final isTf = type == 'transfer';
     if (isTf && (to == null || to == from)) {
-      setState(() => err = 'Pilih rekening tujuan yang berbeda');
+      setState(() => err = tr('Pilih rekening tujuan yang berbeda'));
       return;
     }
     _busy = true;
@@ -222,9 +223,9 @@ class _TxnDialogState extends State<TxnDialog> {
     Kb.close();
     final ok = await confirmDialog(
       context,
-      title: 'Hapus transaksi?',
-      message: 'Transaksi ini dihapus permanen dan saldo rekening ikut berubah.',
-      confirmText: 'Hapus',
+      title: tr('Hapus transaksi?'),
+      message: tr('Transaksi ini dihapus permanen dan saldo rekening ikut berubah.'),
+      confirmText: tr('Hapus'),
       danger: true,
     );
     if (!ok || !mounted) return;
@@ -248,7 +249,7 @@ class _TxnDialogState extends State<TxnDialog> {
 
   Widget _lbl(String t) => Padding(
         padding: const EdgeInsets.only(top: 14, bottom: 8),
-        child: Text(t, style: const TextStyle(color: kMuted, fontSize: 13)),
+        child: Text(t, style: TextStyle(color: kMuted, fontSize: 13)),
       );
 
   Widget _chips(int? sel, ValueChanged<int> on, {int? exclude}) => Wrap(
@@ -333,7 +334,7 @@ class _TxnDialogState extends State<TxnDialog> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(_isEdit ? 'Ubah transaksi' : _names[type]!,
+                  child: Text(_isEdit ? tr('Ubah transaksi') : _names[type]!,
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                 ),
                 Bounce(
@@ -341,7 +342,7 @@ class _TxnDialogState extends State<TxnDialog> {
                     Kb.close(notify: false);
                     Navigator.pop(context);
                   },
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(8),
                     child: Icon(Icons.close_rounded, color: kMuted),
                   ),
@@ -362,41 +363,41 @@ class _TxnDialogState extends State<TxnDialog> {
               prefix: 'Rp',
               accent: _c,
               style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
-              helper: 'Koma untuk desimal',
+              helper: tr('Koma untuk desimal'),
             ),
-            _lbl(isTf ? 'Dari rekening' : 'Rekening'),
+            _lbl(isTf ? tr('Dari rekening') : tr('Rekening')),
             _chips(from, (id) => setState(() {
                   from = id;
                   _fixTo();
                 })),
             if (isTf) ...[
-              _lbl('Ke rekening'),
+              _lbl(tr('Ke rekening')),
               _chips(to, (id) => setState(() => to = id), exclude: from),
             ],
-            _lbl('Waktu'),
+            _lbl(tr('Waktu')),
             GlassCard(
               onTap: _pick,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(children: [
-                const Icon(Icons.schedule, color: kMuted, size: 20),
+                Icon(Icons.schedule, color: kMuted, size: 20),
                 const SizedBox(width: 10),
                 Text(fmtDate(when)),
               ]),
             ),
-            _lbl('Catatan (opsional)'),
+            _lbl(tr('Catatan (opsional)')),
             KbField(
               key: _noteKey,
               ctl: noteC,
               active: _active == noteC,
               onTap: () => _focus(noteC, _noteKey),
-              hint: 'Mis. makan siang',
+              hint: tr('Mis. makan siang'),
               accent: _c,
               maxLines: 2,
             ),
             if (err != null)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Text(err!, style: const TextStyle(color: kOut)),
+                child: Text(err!, style: TextStyle(color: kOut)),
               ),
             const SizedBox(height: 18),
             if (_isEdit)
@@ -404,18 +405,18 @@ class _TxnDialogState extends State<TxnDialog> {
                 children: [
                   Expanded(
                     flex: 2,
-                    child: AppButton('Hapus',
+                    child: AppButton(tr('Hapus'),
                         outlined: true,
                         fg: kOut,
                         icon: Icons.delete_outline_rounded,
                         onTap: _delete),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(flex: 3, child: AppButton('Simpan', color: _c, onTap: _save)),
+                  Expanded(flex: 3, child: AppButton(tr('Simpan'), color: _c, onTap: _save)),
                 ],
               )
             else
-              AppButton('Simpan', color: _c, onTap: _save),
+              AppButton(tr('Simpan'), color: _c, onTap: _save),
           ],
         ),
       ),

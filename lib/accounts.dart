@@ -1,3 +1,4 @@
+import 'strings.dart';
 import 'package:flutter/material.dart';
 import 'app_dialog.dart';
 import 'db.dart';
@@ -63,10 +64,10 @@ class _AccountsState extends State<AccountsScreen> {
   Future<void> _confirmDelete(Account a) async {
     final ok = await confirmDialog(
       context,
-      title: 'Hapus ${a.name}?',
+      title: trf('Hapus {n}?', {'n': a.name}),
       message:
-          'Semua transaksi di rekening ini ikut terhapus, termasuk pindah saldo yang melibatkannya.',
-      confirmText: 'Hapus',
+          tr('Semua transaksi di rekening ini ikut terhapus, termasuk pindah saldo yang melibatkannya.'),
+      confirmText: tr('Hapus'),
       danger: true,
     );
     if (ok) await Db.i.deleteAccount(a.id);
@@ -81,14 +82,14 @@ class _AccountsState extends State<AccountsScreen> {
       key: const PageStorageKey('page_accounts'),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
-        const Text('Rekening', style: kTitle),
+        Text(tr('Rekening'), style: kTitle),
         const SizedBox(height: 16),
         GlassCard(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Total saldo', style: TextStyle(color: kMuted)),
+              Text(tr('Total saldo'), style: TextStyle(color: kMuted)),
               const SizedBox(height: 6),
               Text(money(total), style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700)),
             ],
@@ -115,7 +116,7 @@ class _AccountsState extends State<AccountsScreen> {
                   Text(money(a.balance), style: const TextStyle(fontWeight: FontWeight.w600)),
                   Bounce(
                     onTap: () => _confirmDelete(a),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.all(10),
                       child: Icon(Icons.delete_outline, color: kMuted, size: 20),
                     ),
@@ -125,12 +126,12 @@ class _AccountsState extends State<AccountsScreen> {
             ),
           ),
         if (accs.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: Text('Belum ada rekening', style: TextStyle(color: kMuted))),
+            child: Center(child: Text(tr('Belum ada rekening'), style: TextStyle(color: kMuted))),
           ),
         const SizedBox(height: 6),
-        AppButton('Tambah rekening', icon: Icons.add, outlined: true, onTap: _add),
+        AppButton(tr('Tambah rekening'), icon: Icons.add, outlined: true, onTap: _add),
       ],
     );
   }
@@ -208,8 +209,8 @@ class _AddAccountState extends State<_AddAccount> {
           children: [
             Row(
               children: [
-                const Expanded(
-                  child: Text('Tambah rekening',
+                Expanded(
+                  child: Text(tr('Tambah rekening'),
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                 ),
                 Bounce(
@@ -217,7 +218,7 @@ class _AddAccountState extends State<_AddAccount> {
                     Kb.close(notify: false);
                     Navigator.pop(context);
                   },
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(8),
                     child: Icon(Icons.close_rounded, color: kMuted),
                   ),
@@ -239,15 +240,15 @@ class _AddAccountState extends State<_AddAccount> {
                   },
                 ),
             ]),
-            label('Nama rekening'),
+            label(tr('Nama rekening')),
             KbField(
               key: _nameKey,
               ctl: nameC,
               active: _active == nameC,
               onTap: () => _focus(nameC, _nameKey),
-              hint: 'Mis. BCA, Dompet',
+              hint: tr('Mis. BCA, Dompet'),
             ),
-            label('Saldo awal (opsional)'),
+            label(tr('Saldo awal (opsional)')),
             KbField(
               key: _balKey,
               ctl: balC,
@@ -257,7 +258,7 @@ class _AddAccountState extends State<_AddAccount> {
               prefix: 'Rp',
             ),
             const SizedBox(height: 18),
-            AppButton('Simpan', onTap: _save),
+            AppButton(tr('Simpan'), onTap: _save),
           ],
         ),
       ),

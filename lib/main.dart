@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'lock.dart';
 import 'notif.dart';
 import 'prefs.dart';
 import 'sfx.dart';
+import 'theme.dart';
 import 'intro.dart';
 import 'shell.dart';
 import 'ui.dart';
@@ -18,28 +20,73 @@ Future<void> main() async {
   runApp(const ViemosApp());
 }
 
-class ViemosApp extends StatelessWidget {
+class ViemosApp extends StatefulWidget {
   const ViemosApp({super.key});
+  @override
+  State<ViemosApp> createState() => _ViemosAppState();
+}
+
+class _ViemosAppState extends State<ViemosApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Mode "ikuti sistem": saat tema HP berubah, app ikut (dengan pudar halus).
+  @override
+  void didChangePlatformBrightness() {
+    if (Pal.mode != 0) return;
+    final was = Pal.dark;
+    Pal.refresh();
+    if (Pal.dark == was) return;
+    Pal.dark = was; // kembalikan dulu; perubahan sebenarnya terjadi di dalam ThemeFx
+    ThemeFx.change(Pal.refresh);
+  }
+
+  ThemeData _theme() {
+    final dark = Pal.dark;
+    final scheme = dark
+        ? ColorScheme.dark(primary: kOrange, surface: kBg)
+        : ColorScheme.light(primary: kOrange, surface: kBg);
+    return ThemeData(
+      brightness: dark ? Brightness.dark : Brightness.light,
+      useMaterial3: true,
+      scaffoldBackgroundColor: kBg,
+      colorScheme: scheme,
+      dividerColor: kBorder,
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: kCard,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    // ikon status bar & navigasi harus kontras dengan latar (gelap <-> terang)
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Pal.dark ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: kBg,
+      systemNavigationBarIconBrightness: Pal.dark ? Brightness.light : Brightness.dark,
+    ));
     return MaterialApp(
       title: 'Viemos',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFF0A0D0E),
-        colorScheme: const ColorScheme.dark(primary: kOrange),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: kCard,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
+      theme: _theme(),
+      themeAnimationDuration: Duration.zero, // animasinya diurus ThemeFx
+      builder: (context, child) => ThemeFx(key: ThemeFx.key, child: child ?? const SizedBox()),
       home: const Root(),
     );
   }

@@ -1,9 +1,11 @@
+import 'strings.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'prefs.dart';
 import 'sfx.dart';
 import 'ui.dart';
+import 'theme.dart';
 
 const kPinLen = 6;
 
@@ -27,7 +29,7 @@ class Lock {
     final now = DateTime.now().millisecondsSinceEpoch;
     final until = Prefs.pinLockedUntil;
     if (until > now) {
-      return 'Coba lagi dalam ${((until - now) / 1000).ceil()} detik';
+      return trf('Coba lagi dalam {n} detik', {'n': ((until - now) / 1000).ceil()});
     }
     if (await Prefs.checkPin(pin)) {
       await Prefs.setPinFails(0);
@@ -39,9 +41,9 @@ class Lock {
     if (f >= 5) {
       final secs = 30 * (1 << math.min(f - 5, 6));
       await Prefs.setPinLockedUntil(now + secs * 1000);
-      return 'Terlalu banyak salah. Tunggu $secs detik';
+      return trf('Terlalu banyak salah. Tunggu {n} detik', {'n': secs});
     }
-    return 'PIN salah (${5 - f} percobaan lagi)';
+    return trf('PIN salah ({n} percobaan lagi)', {'n': 5 - f});
   }
 }
 
@@ -135,22 +137,13 @@ class _AppLockState extends State<AppLock> with WidgetsBindingObserver {
   }
 }
 
-const _bgGradient = BoxDecoration(
-  gradient: LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF0A0D0E), Color(0xFF0A0D0E), Color(0xFF2B1B21)],
-    stops: [0, 0.55, 1],
-  ),
-);
-
 /// Latar standar layar PIN (gradient sama dengan app).
 class _PinBg extends StatelessWidget {
   final Widget child;
   const _PinBg({required this.child});
   @override
   Widget build(BuildContext context) => DecoratedBox(
-        decoration: _bgGradient,
+        decoration: kBgDecoration,
         child: SafeArea(child: child),
       );
 }
@@ -252,7 +245,7 @@ class _LockCoinState extends State<_LockCoin> with TickerProviderStateMixin {
                 // muka koin
                 _disc(
                   size,
-                  const Color(0xFF151C1D),
+                  kCard,
                   base,
                   glow: [BoxShadow(color: base.withAlpha(80), blurRadius: 28, spreadRadius: 2)],
                 ),
@@ -302,7 +295,7 @@ class _LockScreenState extends State<_LockScreen> {
         behavior: HitTestBehavior.opaque,
         onTap: () {},
         child: Material(
-          color: const Color(0xFF0A0D0E),
+          color: kBg,
           child: _PinBg(
             child: Column(
               children: [
@@ -312,10 +305,10 @@ class _LockScreenState extends State<_LockScreen> {
                 const Text('Viemos',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: 1)),
                 const SizedBox(height: 2),
-                const Text('Aplikasi terkunci', style: TextStyle(color: kMuted, fontSize: 13)),
+                Text(tr('Aplikasi terkunci'), style: TextStyle(color: kMuted, fontSize: 13)),
                 Expanded(
                   child: PinPad(
-                    title: 'Masukkan PIN',
+                    title: tr('Masukkan PIN'),
                     onStatus: (s) => _status.value = s,
                     onSubmit: (p) async {
                       final e = await Lock.check(p);
@@ -579,7 +572,7 @@ class _PinPadState extends State<PinPad> with TickerProviderStateMixin {
                     : _PadKey(
                         ghost: true,
                         onTap: widget.onCancel,
-                        child: const Icon(Icons.close_rounded, color: kMuted, size: 28),
+                        child: Icon(Icons.close_rounded, color: kMuted, size: 28),
                       ),
               ),
               _digit('0', 4),
@@ -589,7 +582,7 @@ class _PinPadState extends State<PinPad> with TickerProviderStateMixin {
                   ghost: true,
                   onTap: _del,
                   onLong: _clear,
-                  child: const Icon(Icons.backspace_outlined, color: kMuted, size: 25),
+                  child: Icon(Icons.backspace_outlined, color: kMuted, size: 25),
                 ),
               ),
             ]),
@@ -662,15 +655,15 @@ class _PadKeyState extends State<_PadKey> {
                       end: Alignment.bottomCenter,
                       colors: _down
                           ? [kOrange.withAlpha(90), kOrange.withAlpha(40)]
-                          : [const Color(0xFF1D2729), const Color(0xFF131A1B)],
+                          : [Pal.padTop, Pal.padBottom],
                     ),
               border: g ? null : Border.all(color: _down ? kOrange : kBorder, width: 1.5),
               boxShadow: g
                   ? null
                   : [
                       // "tebal" tombol: bayangan keras di bawah, mengecil saat ditekan
-                      BoxShadow(color: const Color(0xFF050708), offset: Offset(0, _down ? 1 : 5)),
-                      if (_down) const BoxShadow(color: kGlow, blurRadius: 22, spreadRadius: 1),
+                      BoxShadow(color: Pal.padShadow, offset: Offset(0, _down ? 1 : 5)),
+                      if (_down) BoxShadow(color: kGlow, blurRadius: 22, spreadRadius: 1),
                     ],
             ),
             child: widget.child,
@@ -715,7 +708,7 @@ Route<T> _pinRoute<T>(Widget page) {
 }
 
 /// Minta PIN lalu return true kalau benar.
-Future<bool> verifyPin(BuildContext context, {String title = 'Masukkan PIN'}) async {
+Future<bool> verifyPin(BuildContext context, {String title = tr('Masukkan PIN')}) async {
   final r = await Navigator.of(context).push<bool>(_pinRoute<bool>(
     Builder(
       builder: (c) => Scaffold(
@@ -760,8 +753,8 @@ class _PinSetupState extends State<_PinSetup> {
     return Scaffold(
       body: _PinBg(
         child: PinPad(
-          title: first == null ? 'Buat PIN baru' : 'Ulangi PIN',
-          subtitle: 'PIN $kPinLen digit. Jangan sampai lupa — tidak ada fitur reset.',
+          title: first == null ? tr('Buat PIN baru') : tr('Ulangi PIN'),
+          subtitle: trf('PIN {n} digit. Jangan sampai lupa — tidak ada fitur reset.', {'n': kPinLen}),
           clearOnSuccess: true,
           onCancel: () => Navigator.pop(context, false),
           onSubmit: (p) async {
@@ -771,7 +764,7 @@ class _PinSetupState extends State<_PinSetup> {
             }
             if (p != first) {
               setState(() => first = null);
-              return 'PIN tidak sama, ulangi dari awal';
+              return tr('PIN tidak sama, ulangi dari awal');
             }
             await Prefs.setPin(p);
             _saved = true;

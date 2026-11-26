@@ -1,3 +1,4 @@
+import 'strings.dart';
 import 'package:flutter/material.dart';
 import 'app_dialog.dart';
 import 'db.dart';
@@ -7,9 +8,9 @@ import 'ui.dart';
 
 Future<bool> confirmDeleteTxn(BuildContext context) => confirmDialog(
       context,
-      title: 'Hapus transaksi?',
-      message: 'Transaksi ini dihapus permanen dan saldo rekening ikut berubah.',
-      confirmText: 'Hapus',
+      title: tr('Hapus transaksi?'),
+      message: tr('Transaksi ini dihapus permanen dan saldo rekening ikut berubah.'),
+      confirmText: tr('Hapus'),
       danger: true,
     );
 
@@ -19,7 +20,7 @@ void _deletedToast(BuildContext context, Txn t) {
   final sign = t.type == 'in' ? '+' : (t.type == 'out' ? '-' : '');
   showIsland(
     context,
-    title: 'Transaksi dihapus',
+    title: tr('Transaksi dihapus'),
     subtitle: t.note.isEmpty ? where : '$where · ${t.note}',
     amount: '$sign${money(t.amount)}',
     icon: Icons.delete_outline_rounded,
@@ -49,8 +50,8 @@ class TxnSwipe extends StatelessWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 22),
         decoration: BoxDecoration(
-            color: const Color(0x33FF8F85), borderRadius: BorderRadius.circular(22)),
-        child: const Icon(Icons.delete_outline, color: kOut),
+            color: kOut.withAlpha(0x33), borderRadius: BorderRadius.circular(22)),
+        child: Icon(Icons.delete_outline, color: kOut),
       ),
       child: TxnTile(
         t,
@@ -78,7 +79,7 @@ class TxnTile extends StatelessWidget {
     final isIn = t.type == 'in', isOut = t.type == 'out';
     final c = isIn ? kIn : (isOut ? kOut : kOrange);
     final ic = isIn ? Icons.arrow_downward : (isOut ? Icons.arrow_upward : Icons.swap_horiz);
-    final name = isIn ? 'Pemasukan' : (isOut ? 'Pengeluaran' : 'Pindah saldo');
+    final name = isIn ? tr('Pemasukan') : (isOut ? tr('Pengeluaran') : tr('Pindah saldo'));
     final where = t.type == 'transfer' ? '${t.accName} → ${t.toName ?? '?'}' : t.accName;
     final when = timeOnly ? '${two(t.ts.hour)}:${two(t.ts.minute)}' : fmtDate(t.ts);
     return GlassCard(
@@ -105,7 +106,7 @@ class TxnTile extends StatelessWidget {
                 Text('$where · $when',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: kMuted, fontSize: 12)),
+                    style: TextStyle(color: kMuted, fontSize: 12)),
               ],
             ),
           ),

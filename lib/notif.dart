@@ -1,3 +1,4 @@
+import 'strings.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -33,11 +34,11 @@ class Notifs {
     }
   }
 
-  static NotificationDetails _details() => const NotificationDetails(
+  static NotificationDetails _details() => NotificationDetails(
         android: AndroidNotificationDetails(
           'viemos_reminder',
-          'Pengingat harian',
-          channelDescription: 'Pengingat untuk mencatat transaksi',
+          tr('Pengingat harian'),
+          channelDescription: tr('Pengingat untuk mencatat transaksi'),
           importance: Importance.high,
           priority: Priority.high,
         ),
@@ -67,8 +68,8 @@ class Notifs {
       if (!at.isAfter(now)) at = at.add(const Duration(days: 1));
       await _p.zonedSchedule(
         _id,
-        'Waktunya catat keuangan',
-        'Sudah catat transaksi hari ini? Ketuk untuk buka Viemos.',
+        tr('Waktunya catat keuangan'),
+        tr('Sudah catat transaksi hari ini? Ketuk untuk buka Viemos.'),
         at,
         _details(),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -87,7 +88,7 @@ class Notifs {
   static Future<void> test() async {
     await init();
     try {
-      await _p.show(1002, 'Tes pengingat', 'Notifikasi Viemos berfungsi 👍', _details());
+      await _p.show(1002, tr('Tes pengingat'), tr('Notifikasi Viemos berfungsi 👍'), _details());
     } catch (_) {}
   }
 }

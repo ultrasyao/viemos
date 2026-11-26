@@ -13,7 +13,7 @@ void showIsland(
   String? subtitle,
   String? amount,
   IconData icon = Icons.check_rounded,
-  Color color = kOrange,
+  Color? color,
   String sound = 'info',
 }) {
   final overlay = Overlay.maybeOf(context, rootOverlay: true);
@@ -27,7 +27,7 @@ void showIsland(
       subtitle: subtitle,
       amount: amount,
       icon: icon,
-      color: color,
+      color: color ?? kOrange,
       sound: sound,
       onDone: () {
         if (entry.mounted) entry.remove();
@@ -112,13 +112,13 @@ class _IslandState extends State<_Island> with SingleTickerProviderStateMixin {
                 Text(widget.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: kText)),
+                    style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: kText)),
                 if (sub != null && sub.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(sub,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12.5, color: kMuted)),
+                      style: TextStyle(fontSize: 12.5, color: kMuted)),
                 ],
               ],
             ),
@@ -173,7 +173,7 @@ class _IslandState extends State<_Island> with SingleTickerProviderStateMixin {
                       width: w,
                       height: h,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF111718),
+                        color: kPanel,
                         borderRadius: BorderRadius.circular(r),
                         border: Border.all(color: widget.color.withAlpha(140), width: 1.5),
                         boxShadow: [BoxShadow(color: widget.color.withAlpha(60), blurRadius: 26)],

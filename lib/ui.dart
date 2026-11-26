@@ -1,16 +1,36 @@
+import 'strings.dart';
 import 'package:flutter/material.dart';
 import 'island.dart';
 import 'sfx.dart';
+import 'theme.dart';
 
-const kOrange = Color(0xFFFFB066);
-const kGlow = Color(0x38FFB066);
-const kCard = Color(0xFF151C1D);
-const kBorder = Color(0xFF2A3335);
-const kIn = Color(0xFF7BE0A8);
-const kOut = Color(0xFFFF8F85);
-const kText = Color(0xFFE6EEEE);
-const kMuted = Color(0xFF8A9A9C);
-const kTitle = TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: kText);
+// Warna dibaca dari palet aktif (terang/gelap + warna tema), jadi BUKAN const.
+// Nama lama dipertahankan supaya seluruh kode lain tetap sama.
+Color get kOrange => Pal.accent; // warna tema
+Color get kGlow => Pal.accent.withAlpha(0x38);
+Color get kCard => Pal.card;
+Color get kBorder => Pal.border;
+Color get kIn => Pal.income;
+Color get kOut => Pal.expense;
+Color get kText => Pal.text;
+Color get kMuted => Pal.muted;
+Color get kBg => Pal.bg;
+Color get kBg2 => Pal.bg2;
+Color get kPanel => Pal.panel;
+Color get kSheet => Pal.sheet;
+/// Teks/ikon di atas warna tema (tombol utama, dll).
+const kOnAccent = Color(0xFF0A0D0E);
+TextStyle get kTitle => TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: kText);
+
+/// Latar gradient standar semua layar.
+BoxDecoration get kBgDecoration => BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [kBg, kBg, kBg2],
+        stops: const [0, 0.6, 1],
+      ),
+    );
 
 bool kDecimals = false;
 
@@ -39,13 +59,13 @@ int? parseMoney(String s) {
 }
 
 String two(int n) => n.toString().padLeft(2, '0');
-const _bln = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+List<String> get _bln => ['Jan', 'Feb', 'Mar', 'Apr', tr('Mei'), 'Jun', 'Jul', tr('Agu'), 'Sep', tr('Okt'), 'Nov', tr('Des')];
 String fmtDate(DateTime d) =>
     '${d.day} ${_bln[d.month - 1]} ${d.year}, ${two(d.hour)}:${two(d.minute)}';
 
 Widget label(String t) => Padding(
       padding: const EdgeInsets.only(top: 18, bottom: 8),
-      child: Text(t, style: const TextStyle(color: kMuted, fontSize: 13)),
+      child: Text(t, style: TextStyle(color: kMuted, fontSize: 13)),
     );
 
 void toast(BuildContext c, String m) =>
@@ -108,7 +128,7 @@ class _BounceState extends State<Bounce> {
 class AppButton extends StatelessWidget {
   final String text;
   final VoidCallback onTap;
-  final Color color;
+  final Color? color;
   final bool outlined;
   final IconData? icon;
   final double height;
@@ -117,7 +137,7 @@ class AppButton extends StatelessWidget {
     this.text, {
     super.key,
     required this.onTap,
-    this.color = kOrange,
+    this.color,
     this.outlined = false,
     this.icon,
     this.height = 52,
@@ -126,7 +146,8 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = this.fg ?? (outlined ? kText : Colors.black);
+    final fg = this.fg ?? (outlined ? kText : kOnAccent);
+    final color = this.color ?? kOrange;
     return Bounce(
       onTap: onTap,
       child: Container(
@@ -168,7 +189,7 @@ class GlassCard extends StatelessWidget {
       color: kCard,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(22),
-        side: const BorderSide(color: kBorder),
+        side: BorderSide(color: kBorder),
       ),
       child: Padding(padding: padding, child: child),
     );

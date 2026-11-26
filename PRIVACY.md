@@ -16,4 +16,4 @@ Viemos adalah aplikasi pencatat keuangan pribadi yang bekerja sepenuhnya di pera
 
 **Penghapusan data:** gunakan Setting → Hapus semua data, atau hapus instalasi aplikasi.
 
-**Kontak:** utrasyao@gmail.com
+**Kontak:** isi dengan email kamu di sini sebelum dipublikasikan.

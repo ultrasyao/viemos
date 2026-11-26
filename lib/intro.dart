@@ -1,14 +1,18 @@
+import 'strings.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'lock.dart';
 import 'sfx.dart';
+import 'theme.dart';
 import 'ui.dart';
 
-const _bg = Color(0xFF0A0D0E);
 const _word = 'Viemos';
 const _zoomLetter = 4; // huruf "o" — kamera masuk ke lubang tengahnya
 const _fs = 46.0;
 const _style = TextStyle(fontSize: _fs, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 1);
+
+/// Warna huruf: putih di mode gelap, hampir hitam di mode terang.
+Color get _fg => Pal.dark ? Colors.white : const Color(0xFF14191A);
 
 /// Titik waktu (0..1) mulai zoom. Dipakai Root untuk menarik aplikasi masuk.
 const kIntroZoomAt = 0.66;
@@ -162,8 +166,8 @@ class _IntroState extends State<Intro> with SingleTickerProviderStateMixin {
             _word[i],
             style: _style.copyWith(
               color: i == _zoomLetter
-                  ? Colors.white.withAlpha((255 * ringAlpha).round())
-                  : (showOthers ? Colors.white : Colors.transparent),
+                  ? _fg.withAlpha((255 * ringAlpha).round())
+                  : (showOthers ? _fg : Colors.transparent),
             ),
           ),
       ],
@@ -222,14 +226,14 @@ class _IntroState extends State<Intro> with SingleTickerProviderStateMixin {
                         alignment: Alignment.center,
                         transform: Matrix4.translationValues(0, 0, k * 2.6 * depthF),
                         child: _slab(Color.lerp(
-                            const Color(0xFFFFB066), const Color(0xFF2B1B21), k / layers)!),
+                            kOrange, Color.lerp(kOrange, Colors.black, 0.75)!, k / layers)!),
                       ),
                   ShaderMask(
                     blendMode: BlendMode.srcIn,
                     shaderCallback: (r) => LinearGradient(
                       begin: Alignment(-2 + 4 * shine, 0),
                       end: Alignment(-1 + 4 * shine, 0),
-                      colors: const [Colors.white, Color(0xFFFFC98F), Colors.white],
+                      colors: [_fg, Color.lerp(kOrange, Colors.white, 0.45)!, _fg],
                       stops: const [0, 0.5, 1],
                     ).createShader(r),
                     child: _face(c),
@@ -254,7 +258,7 @@ class _IntroState extends State<Intro> with SingleTickerProviderStateMixin {
                   ),
                   size: Size.infinite,
                 )
-              : const ColoredBox(color: _bg);
+              : ColoredBox(color: kBg);
 
           return Stack(
             fit: StackFit.expand,
@@ -297,7 +301,7 @@ class _IntroState extends State<Intro> with SingleTickerProviderStateMixin {
                     opacity: tag,
                     child: Transform.translate(
                       offset: Offset(0, (1 - tagIn) * 10),
-                      child: const Text('Catat. Pantau. Tenang.',
+                      child: Text(tr('Catat. Pantau. Tenang.'),
                           style: TextStyle(color: kMuted, letterSpacing: 2, fontSize: 13)),
                     ),
                   ),
@@ -323,7 +327,7 @@ class _HolePainter extends CustomPainter {
       ..fillType = PathFillType.evenOdd
       ..addRect(Offset.zero & size)
       ..addOval(Rect.fromCenter(center: center, width: rx * 2, height: ry * 2));
-    canvas.drawPath(path, Paint()..color = _bg);
+    canvas.drawPath(path, Paint()..color = kBg);
   }
 
   @override

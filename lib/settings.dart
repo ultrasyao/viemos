@@ -1,3 +1,5 @@
+import 'strings.dart';
+import 'theme.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -47,14 +49,14 @@ class _SettingsState extends State<SettingsScreen> {
   Widget _section(String t) => Padding(
         padding: const EdgeInsets.only(top: 24, bottom: 8, left: 4),
         child: Text(t.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
                 color: kMuted, fontSize: 12, letterSpacing: 1.1, fontWeight: FontWeight.w600)),
       );
 
   Widget _group(List<Widget> rows) {
     final kids = <Widget>[];
     for (var i = 0; i < rows.length; i++) {
-      if (i > 0) kids.add(const Divider(height: 1, color: kBorder, indent: 66));
+      if (i > 0) kids.add(Divider(height: 1, color: kBorder, indent: 66));
       kids.add(rows[i]);
     }
     return Material(
@@ -62,7 +64,7 @@ class _SettingsState extends State<SettingsScreen> {
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(22),
-        side: const BorderSide(color: kBorder),
+        side: BorderSide(color: kBorder),
       ),
       child: Column(children: kids),
     );
@@ -104,7 +106,7 @@ class _SettingsState extends State<SettingsScreen> {
                   if (sub != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(sub, style: const TextStyle(color: kMuted, fontSize: 12.5)),
+                      child: Text(sub, style: TextStyle(color: kMuted, fontSize: 12.5)),
                     ),
                 ],
               ),
@@ -131,7 +133,68 @@ class _SettingsState extends State<SettingsScreen> {
         trailing: IgnorePointer(child: Switch(value: value, onChanged: (_) {})),
       );
 
-  Widget _chev() => const Icon(Icons.chevron_right_rounded, color: kMuted);
+  /// Pil pilihan; menyimpan posisi ketukan supaya animasi lingkaran mulai dari jari.
+  Widget _pill(String label, bool on, void Function(Offset p) tap) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapUp: (d) {
+          Sfx.click();
+          tap(d.globalPosition);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: on ? kOrange.withAlpha(46) : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: on ? kOrange : kBorder, width: 1.5),
+          ),
+          child: Text(tr(label),
+              style: TextStyle(fontWeight: FontWeight.w600, color: on ? kOrange : kText)),
+        ),
+      );
+
+  Widget _opts(String title, Widget body) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(tr(title), style: TextStyle(fontWeight: FontWeight.w600, color: kText)),
+            const SizedBox(height: 10),
+            body,
+          ],
+        ),
+      );
+
+  void _setMode(int v, Offset at) {
+    if (v == Pal.mode) return;
+    final sys = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    final willDark = v == 2 || (v == 0 && sys == Brightness.dark);
+    ThemeFx.change(
+      () {
+        Pal.mode = v;
+        Pal.refresh();
+      },
+      origin: at,
+      circle: willDark != Pal.dark, // gelap<->terang: lingkaran; selain itu: pudar
+    );
+    Prefs.setThemeMode(v);
+  }
+
+  void _setAccent(int i) {
+    if (i == Pal.accentIdx) return;
+    ThemeFx.change(() => Pal.accentIdx = i);
+    Prefs.setAccent(i);
+  }
+
+  Future<void> _setLang(String c) async {
+    if (c == Lang.code) return;
+    await ThemeFx.change(() => Lang.code = c);
+    await Prefs.setLang(c);
+    // teks notifikasi terjadwal ikut bahasa baru
+    if (Prefs.reminderOn) await Notifs.scheduleDaily(Prefs.reminderMin);
+  }
+
+  Widget _chev() => Icon(Icons.chevron_right_rounded, color: kMuted);
 
   void _ok(String title, {String? sub, IconData icon = Icons.check_rounded}) {
     if (!mounted) return;
@@ -158,7 +221,7 @@ class _SettingsState extends State<SettingsScreen> {
     final ok = await setupPin(context);
     if (!mounted) return;
     setState(() {});
-    if (ok) _ok('PIN aktif', sub: 'Aplikasi terkunci saat ditutup', icon: Icons.lock_rounded);
+    if (ok) _ok(tr('PIN aktif'), sub: tr('Aplikasi terkunci saat ditutup'), icon: Icons.lock_rounded);
   }
 
   Future<void> _changePin() async {
@@ -172,26 +235,26 @@ class _SettingsState extends State<SettingsScreen> {
     await Prefs.clearPin();
     if (!mounted) return;
     setState(() {});
-    _ok('PIN dimatikan', icon: Icons.lock_open_rounded);
+    _ok(tr('PIN dimatikan'), icon: Icons.lock_open_rounded);
   }
 
   String _lockLabel() {
     final s = Prefs.lockAfter;
-    if (s == 0) return 'Langsung saat keluar app';
-    if (s < 60) return 'Setelah $s detik';
-    return 'Setelah ${s ~/ 60} menit';
+    if (s == 0) return tr('Langsung saat keluar app');
+    if (s < 60) return trf('Setelah {n} detik', {'n': s});
+    return trf('Setelah {n} menit', {'n': s ~/ 60});
   }
 
   Future<void> _pickLockAfter() async {
     final v = await choiceDialog<int>(
       context,
-      title: 'Kunci otomatis',
+      title: tr('Kunci otomatis'),
       selected: Prefs.lockAfter,
-      options: const [
-        (0, 'Langsung'),
-        (30, 'Setelah 30 detik'),
-        (60, 'Setelah 1 menit'),
-        (300, 'Setelah 5 menit'),
+      options: [
+        (0, tr('Langsung')),
+        (30, tr('Setelah 30 detik')),
+        (60, tr('Setelah 1 menit')),
+        (300, tr('Setelah 5 menit')),
       ],
     );
     if (v == null) return;
@@ -209,12 +272,12 @@ class _SettingsState extends State<SettingsScreen> {
     if (on) {
       final ok = await Notifs.ask();
       if (!ok) {
-        _bad('Izin notifikasi ditolak', sub: 'Aktifkan lewat Info aplikasi → Notifikasi');
+        _bad(tr('Izin notifikasi ditolak'), sub: tr('Aktifkan lewat Info aplikasi → Notifikasi'));
         return;
       }
       await Prefs.setReminderOn(true);
       await Notifs.scheduleDaily(Prefs.reminderMin);
-      _ok('Pengingat aktif', sub: 'Setiap hari jam ${_timeLabel()}', icon: Icons.notifications_active_outlined);
+      _ok(tr('Pengingat aktif'), sub: trf('Setiap hari jam {n}', {'n': _timeLabel()}), icon: Icons.notifications_active_outlined);
     } else {
       await Prefs.setReminderOn(false);
       await Notifs.cancel();
@@ -238,7 +301,7 @@ class _SettingsState extends State<SettingsScreen> {
   Future<void> _testNotif() async {
     final ok = await Notifs.ask();
     if (!ok) {
-      _bad('Izin notifikasi ditolak');
+      _bad(tr('Izin notifikasi ditolak'));
       return;
     }
     await Notifs.test();
@@ -261,7 +324,7 @@ class _SettingsState extends State<SettingsScreen> {
         await f.delete(); // jangan tinggalkan data keuangan di cache
       } catch (_) {}
     } catch (e) {
-      _bad('Gagal membagikan file', sub: '$e');
+      _bad(tr('Gagal membagikan file'), sub: '$e');
     }
   }
 
@@ -278,15 +341,15 @@ class _SettingsState extends State<SettingsScreen> {
     Lock.skipNext();
     try {
       final path = await FilePicker.platform.saveFile(
-        dialogTitle: 'Simpan backup',
+        dialogTitle: tr('Simpan backup'),
         fileName: 'viemos-backup-${_stamp()}.json',
         bytes: Uint8List.fromList(utf8.encode(j)),
       );
       if (path == null) return;
       final name = path.split('/').last;
-      _ok('Backup tersimpan', sub: name.isEmpty ? path : name, icon: Icons.download_done_rounded);
+      _ok(tr('Backup tersimpan'), sub: name.isEmpty ? path : name, icon: Icons.download_done_rounded);
     } catch (e) {
-      _bad('Gagal menyimpan backup', sub: '$e');
+      _bad(tr('Gagal menyimpan backup'), sub: '$e');
     }
   }
 
@@ -296,7 +359,7 @@ class _SettingsState extends State<SettingsScreen> {
     final list = await Db.i.txns();
     final b = StringBuffer('\uFEFFTanggal,Jam,Jenis,Rekening,Rekening tujuan,Jumlah,Catatan\n');
     for (final t in list.reversed) {
-      final jenis = t.type == 'in' ? 'Pemasukan' : (t.type == 'out' ? 'Pengeluaran' : 'Pindah saldo');
+      final jenis = t.type == 'in' ? tr('Pemasukan') : (t.type == 'out' ? tr('Pengeluaran') : tr('Pindah saldo'));
       final d = '${t.ts.year}-${two(t.ts.month)}-${two(t.ts.day)}';
       final jam = '${two(t.ts.hour)}:${two(t.ts.minute)}';
       b.writeln([
@@ -323,7 +386,7 @@ class _SettingsState extends State<SettingsScreen> {
   Future<void> _restoreText(String raw) async {
     final data = _parse(raw);
     if (data == null) {
-      _bad('File bukan backup Viemos');
+      _bad(tr('File bukan backup Viemos'));
       return;
     }
     final a = (data['accounts'] as List?)?.length ?? 0;
@@ -331,16 +394,16 @@ class _SettingsState extends State<SettingsScreen> {
     if (!mounted) return;
     final ok = await confirmDialog(
       context,
-      title: 'Pulihkan data?',
-      message: 'Semua data sekarang akan DIGANTI dengan isi backup: $a rekening, $t transaksi.',
-      confirmText: 'Pulihkan',
+      title: tr('Pulihkan data?'),
+      message: trf('Semua data sekarang akan DIGANTI dengan isi backup: {a} rekening, {t} transaksi.', {'a': a, 't': t}),
+      confirmText: tr('Pulihkan'),
     );
     if (!ok) return;
     try {
       await Db.i.importAll(data);
-      _ok('Data dipulihkan', sub: '$a rekening · $t transaksi', icon: Icons.restore_rounded);
+      _ok(tr('Data dipulihkan'), sub: trf('{a} rekening · {t} transaksi', {'a': a, 't': t}), icon: Icons.restore_rounded);
     } catch (e) {
-      _bad('Gagal memulihkan', sub: 'Data lama tidak berubah');
+      _bad(tr('Gagal memulihkan'), sub: tr('Data lama tidak berubah'));
     }
   }
 
@@ -352,12 +415,12 @@ class _SettingsState extends State<SettingsScreen> {
       if (r == null || r.files.isEmpty) return;
       final bytes = r.files.first.bytes;
       if (bytes == null || bytes.length > 20 * 1024 * 1024) {
-        _bad('File tidak bisa dibaca', sub: 'Kosong atau terlalu besar');
+        _bad(tr('File tidak bisa dibaca'), sub: tr('Kosong atau terlalu besar'));
         return;
       }
       await _restoreText(utf8.decode(bytes));
     } catch (_) {
-      _bad('File tidak bisa dibaca');
+      _bad(tr('File tidak bisa dibaca'));
     }
   }
 
@@ -366,14 +429,14 @@ class _SettingsState extends State<SettingsScreen> {
     if (!mounted) return;
     final ok = await confirmDialog(
       context,
-      title: 'Hapus semua data?',
-      message: 'Semua rekening dan transaksi dihapus permanen. Buat backup dulu kalau masih perlu.',
-      confirmText: 'Hapus',
+      title: tr('Hapus semua data?'),
+      message: tr('Semua rekening dan transaksi dihapus permanen. Buat backup dulu kalau masih perlu.'),
+      confirmText: tr('Hapus'),
       danger: true,
     );
     if (!ok) return;
     await Db.i.clearAll();
-    _ok('Semua data dihapus', icon: Icons.delete_outline_rounded);
+    _ok(tr('Semua data dihapus'), icon: Icons.delete_outline_rounded);
   }
 
   // ------------------------------------------------------------------ build
@@ -384,13 +447,60 @@ class _SettingsState extends State<SettingsScreen> {
       key: const PageStorageKey('page_settings'),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
       children: [
-        const Text('Setting', style: kTitle),
-        _section('Keamanan'),
+        Text(tr('Setting'), style: kTitle),
+        _section(tr('Tema & bahasa')),
+        _group([
+          _opts(
+            'Mode tampilan',
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              _pill('Sistem', Pal.mode == 0, (p) => _setMode(0, p)),
+              _pill('Terang', Pal.mode == 1, (p) => _setMode(1, p)),
+              _pill('Gelap', Pal.mode == 2, (p) => _setMode(2, p)),
+            ]),
+          ),
+          _opts(
+            'Warna tema',
+            Wrap(spacing: 12, runSpacing: 12, children: [
+              for (var i = 0; i < kAccents.length; i++)
+                GestureDetector(
+                  onTap: () {
+                    Sfx.click();
+                    _setAccent(i);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Pal.dark ? kAccents[i].dark : kAccents[i].light,
+                      border: Border.all(
+                        color: Pal.accentIdx == i ? kText : Colors.transparent,
+                        width: 2.5,
+                      ),
+                    ),
+                    child: Pal.accentIdx == i
+                        ? const Icon(Icons.check_rounded, color: kOnAccent, size: 22)
+                        : null,
+                  ),
+                ),
+            ]),
+          ),
+          _opts(
+            'Bahasa',
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              _pill('Indonesia', Lang.code == 'id', (_) => _setLang('id')),
+              _pill('English', Lang.code == 'en', (_) => _setLang('en')),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 4),
+        _section(tr('Keamanan')),
         _group([
           _toggle(
             icon: Icons.screenshot_monitor_rounded,
-            title: 'Blokir screenshot',
-            sub: 'Sembunyikan isi app dari tangkapan layar & daftar app terbaru',
+            title: tr('Blokir screenshot'),
+            sub: tr('Sembunyikan isi app dari tangkapan layar & daftar app terbaru'),
             value: Prefs.secureScreen,
             on: (v) async {
               await Prefs.setSecureScreen(v);
@@ -399,80 +509,80 @@ class _SettingsState extends State<SettingsScreen> {
           ),
           _row(
             icon: pin ? Icons.lock_rounded : Icons.lock_open_rounded,
-            title: 'Kunci PIN',
-            sub: pin ? 'Aktif · $kPinLen digit' : 'Belum aktif',
+            title: tr('Kunci PIN'),
+            sub: pin ? trf('Aktif · {n} digit', {'n': kPinLen}) : tr('Belum aktif'),
             onTap: pin ? _offPin : _newPin,
             trailing: IgnorePointer(child: Switch(value: pin, onChanged: (_) {})),
           ),
           if (pin) ...[
-            _row(icon: Icons.password_rounded, title: 'Ubah PIN', onTap: _changePin, trailing: _chev()),
+            _row(icon: Icons.password_rounded, title: tr('Ubah PIN'), onTap: _changePin, trailing: _chev()),
             _row(
                 icon: Icons.timer_outlined,
-                title: 'Kunci otomatis',
+                title: tr('Kunci otomatis'),
                 sub: _lockLabel(),
                 onTap: _pickLockAfter,
                 trailing: _chev()),
-            _row(icon: Icons.lock_clock_outlined, title: 'Kunci sekarang', onTap: Lock.lockNow),
+            _row(icon: Icons.lock_clock_outlined, title: tr('Kunci sekarang'), onTap: Lock.lockNow),
           ],
         ]),
-        _section('Pengingat'),
+        _section(tr('Pengingat')),
         _group([
           _toggle(
             icon: Icons.notifications_active_outlined,
-            title: 'Pengingat harian',
-            sub: 'Ingatkan catat transaksi',
+            title: tr('Pengingat harian'),
+            sub: tr('Ingatkan catat transaksi'),
             value: Prefs.reminderOn,
             on: _toggleReminder,
           ),
           if (Prefs.reminderOn)
             _row(
               icon: Icons.schedule_rounded,
-              title: 'Jam pengingat',
+              title: tr('Jam pengingat'),
               sub: _timeLabel(),
               onTap: _pickTime,
               trailing: _chev(),
             ),
-          _row(icon: Icons.notifications_none_rounded, title: 'Tes notifikasi', onTap: _testNotif),
+          _row(icon: Icons.notifications_none_rounded, title: tr('Tes notifikasi'), onTap: _testNotif),
         ]),
-        _section('Backup & pulihkan'),
+        _section(tr('Backup & pulihkan')),
         _group([
           _row(
             icon: Icons.download_rounded,
-            title: 'Download backup',
-            sub: 'Simpan file .json ke HP (tidak terenkripsi — simpan di tempat aman)',
+            title: tr('Download backup'),
+            sub: tr('Simpan file .json ke HP (tidak terenkripsi — simpan di tempat aman)'),
             onTap: _backupDownload,
             trailing: _chev(),
           ),
           _row(
               icon: Icons.ios_share_rounded,
-              title: 'Bagikan backup',
-              sub: 'Kirim file .json lewat WhatsApp, Drive, dll',
+              title: tr('Bagikan backup'),
+              sub: tr('Kirim file .json lewat WhatsApp, Drive, dll'),
               onTap: _backupShare),
           _row(
               icon: Icons.restore_rounded,
-              title: 'Pulihkan dari file',
-              sub: 'Mengganti semua data sekarang',
+              title: tr('Pulihkan dari file'),
+              sub: tr('Mengganti semua data sekarang'),
               onTap: _restoreFile),
         ]),
-        _section('Data'),
+        _section(tr('Data')),
         _group([
           _row(
               icon: Icons.table_chart_outlined,
-              title: 'Ekspor CSV',
-              sub: 'Untuk dibuka di Excel / Sheets',
+              title: tr('Ekspor CSV'),
+              sub: tr('Untuk dibuka di Excel / Sheets'),
               onTap: _exportCsv),
           _row(
               icon: Icons.delete_forever_outlined,
-              title: 'Hapus semua data',
+              title: tr('Hapus semua data'),
               color: kOut,
               onTap: _wipe),
         ]),
-        _section('Tampilan & suara'),
+        _section(tr('Tampilan & suara')),
         _group([
           _toggle(
             icon: Icons.volume_up_outlined,
-            title: 'Suara',
-            sub: 'Klik & notifikasi transaksi',
+            title: tr('Suara'),
+            sub: tr('Klik & notifikasi transaksi'),
             value: Prefs.sound,
             on: (v) async {
               await Prefs.setSound(v);
@@ -481,8 +591,8 @@ class _SettingsState extends State<SettingsScreen> {
           ),
           _toggle(
             icon: Icons.vibration_rounded,
-            title: 'Getar',
-            sub: 'Saat transaksi tersimpan',
+            title: tr('Getar'),
+            sub: tr('Saat transaksi tersimpan'),
             value: Prefs.haptic,
             on: (v) async {
               await Prefs.setHaptic(v);
@@ -491,8 +601,8 @@ class _SettingsState extends State<SettingsScreen> {
           ),
           _toggle(
             icon: Icons.looks_one_outlined,
-            title: 'Tampilkan desimal',
-            sub: 'Rp 12.500,50 bukan Rp 12.501',
+            title: tr('Tampilkan desimal'),
+            sub: tr('Rp 12.500,50 bukan Rp 12.501'),
             value: Prefs.decimals,
             on: (v) async {
               await Prefs.setDecimals(v);
@@ -501,12 +611,12 @@ class _SettingsState extends State<SettingsScreen> {
             },
           ),
         ]),
-        _section('Tentang'),
+        _section(tr('Tentang')),
         _group([
           _row(
             icon: Icons.info_outline_rounded,
             title: 'Viemos v$kVersion',
-            sub: '$txnCount transaksi tersimpan · data hanya ada di HP ini',
+            sub: trf('{n} transaksi tersimpan · data hanya ada di HP ini', {'n': txnCount}),
           ),
         ]),
       ],

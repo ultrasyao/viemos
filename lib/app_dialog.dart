@@ -1,15 +1,17 @@
+import 'strings.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'kb.dart';
 import 'sfx.dart';
 import 'ui.dart';
+import 'theme.dart';
 
 /// Popup yang "mekar" dari atas layar ke tengah (seperti pulau yang melebar),
 /// ada suara buka & tutup. Dipakai untuk SEMUA popup di app.
 Future<T?> showAppDialog<T>(
   BuildContext context, {
   required WidgetBuilder builder,
-  Color accent = kOrange,
+  Color? accent,
   bool dismissible = true,
 }) {
   Sfx.play('open');
@@ -17,8 +19,8 @@ Future<T?> showAppDialog<T>(
   return showGeneralDialog<T>(
     context: context,
     barrierDismissible: dismissible,
-    barrierLabel: 'Tutup',
-    barrierColor: Colors.black.withAlpha(165),
+    barrierLabel: tr('Tutup'),
+    barrierColor: Pal.scrim,
     transitionDuration: const Duration(milliseconds: 560),
     pageBuilder: (ctx, _, __) => _CloseSound(child: builder(ctx)),
     transitionBuilder: (ctx, a, __, child) => _expand(ctx, a, child),
@@ -109,17 +111,18 @@ class _CloseSoundState extends State<_CloseSound> {
 /// supaya cahayanya tidak terpotong tepi layar.
 class AppPanel extends StatelessWidget {
   final Widget child;
-  final Color accent;
+  final Color? accent;
   final EdgeInsets padding;
   const AppPanel({
     super.key,
     required this.child,
-    this.accent = kOrange,
+    this.accent,
     this.padding = const EdgeInsets.fromLTRB(20, 18, 20, 20),
   });
 
   @override
   Widget build(BuildContext context) {
+    final accent = this.accent ?? kOrange;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 30),
       child: ConstrainedBox(
@@ -128,12 +131,12 @@ class AppPanel extends StatelessWidget {
           width: double.infinity,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: const Color(0xFF111718),
+              color: kPanel,
               borderRadius: BorderRadius.circular(28),
               border: Border.all(color: accent.withAlpha(90)),
               boxShadow: [
                 BoxShadow(color: accent.withAlpha(64), blurRadius: 26, spreadRadius: 1),
-                const BoxShadow(color: Color(0x99000000), blurRadius: 22, offset: Offset(0, 10)),
+                BoxShadow(color: Pal.shadow, blurRadius: 22, offset: const Offset(0, 10)),
               ],
             ),
             child: ClipRRect(
@@ -156,7 +159,7 @@ Future<bool> confirmDialog(
   required String title,
   String? message,
   String confirmText = 'OK',
-  String cancelText = 'Batal',
+  String cancelText = tr('Batal'),
   bool danger = false,
 }) async {
   final c = danger ? kOut : kOrange;
@@ -172,7 +175,7 @@ Future<bool> confirmDialog(
           Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
           if (message != null) ...[
             const SizedBox(height: 10),
-            Text(message, style: const TextStyle(color: kMuted, height: 1.4)),
+            Text(message, style: TextStyle(color: kMuted, height: 1.4)),
           ],
           const SizedBox(height: 20),
           Row(
@@ -229,7 +232,7 @@ Future<T?> choiceDialog<T>(
                                 fontWeight: FontWeight.w600,
                                 color: o.$1 == selected ? kOrange : kText)),
                       ),
-                      if (o.$1 == selected) const Icon(Icons.check_rounded, color: kOrange, size: 20),
+                      if (o.$1 == selected) Icon(Icons.check_rounded, color: kOrange, size: 20),
                     ],
                   ),
                 ),

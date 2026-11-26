@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'secure.dart';
 import 'sfx.dart';
+import 'theme.dart';
 import 'ui.dart';
 
 /// Semua pengaturan aplikasi. Panggil `await Prefs.load()` sekali di main().
@@ -24,6 +25,30 @@ class Prefs {
     Sfx.haptic = haptic;
     kDecimals = decimals;
     Secure.apply(secureScreen);
+    Pal.mode = themeMode;
+    Pal.accentIdx = accentIdx;
+    Pal.refresh();
+    Lang.code = lang;
+  }
+
+  // ---- tema & bahasa
+  /// 0 = ikuti sistem, 1 = terang, 2 = gelap
+  static int get themeMode => _p.getInt('theme_mode') ?? 2;
+  static int get accentIdx => _p.getInt('accent') ?? 0;
+  static String get lang => _p.getString('lang') ?? 'id';
+  static Future<void> setThemeMode(int v) async {
+    await _p.setInt('theme_mode', v);
+    apply();
+  }
+
+  static Future<void> setAccent(int v) async {
+    await _p.setInt('accent', v);
+    apply();
+  }
+
+  static Future<void> setLang(String v) async {
+    await _p.setString('lang', v);
+    apply();
   }
 
   // ---- tampilan & suara

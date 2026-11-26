@@ -1,7 +1,9 @@
+import 'strings.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'sfx.dart';
 import 'ui.dart';
+import 'theme.dart';
 
 class _Item {
   final String type, label;
@@ -10,10 +12,10 @@ class _Item {
   const _Item(this.type, this.label, this.icon, this.color);
 }
 
-const _items = [
-  _Item('in', 'Pemasukan', Icons.south_west_rounded, kIn),
-  _Item('out', 'Pengeluaran', Icons.north_east_rounded, kOut),
-  _Item('transfer', 'Pindah saldo', Icons.swap_horiz_rounded, kOrange),
+List<_Item> get _items => [
+  _Item('in', tr('Pemasukan'), Icons.south_west_rounded, kIn),
+  _Item('out', tr('Pengeluaran'), Icons.north_east_rounded, kOut),
+  _Item('transfer', tr('Pindah saldo'), Icons.swap_horiz_rounded, kOrange),
 ];
 
 class QuickAdd extends StatefulWidget {
@@ -98,7 +100,7 @@ class _QuickAddState extends State<QuickAdd> with SingleTickerProviderStateMixin
                         border: Border.all(color: kBorder),
                       ),
                       child: Text(it.label,
-                          style: const TextStyle(fontWeight: FontWeight.w600, color: kText)),
+                          style: TextStyle(fontWeight: FontWeight.w600, color: kText)),
                     ),
                     const SizedBox(width: 12),
                     Container(
@@ -106,7 +108,7 @@ class _QuickAddState extends State<QuickAdd> with SingleTickerProviderStateMixin
                       height: 52,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF151C1D),
+                        color: Pal.fab,
                         border: Border.all(color: it.color, width: 2),
                         boxShadow: [BoxShadow(color: it.color.withAlpha(70), blurRadius: 18)],
                       ),
@@ -123,7 +125,7 @@ class _QuickAddState extends State<QuickAdd> with SingleTickerProviderStateMixin
   }
 
   Widget _fab(double v) {
-    final bg = Color.lerp(const Color(0xFF171E1F), kOrange, v)!;
+    final bg = Color.lerp(Pal.fab, kOrange, v)!;
     return GestureDetector(
       onTapDown: (_) => setState(() => _down = true),
       onTapUp: (_) => setState(() => _down = false),
@@ -139,7 +141,7 @@ class _QuickAddState extends State<QuickAdd> with SingleTickerProviderStateMixin
             shape: BoxShape.circle,
             color: bg,
             border: Border.all(color: kOrange, width: 3),
-            boxShadow: const [BoxShadow(color: kGlow, blurRadius: 24, spreadRadius: 3)],
+            boxShadow: [BoxShadow(color: kGlow, blurRadius: 24, spreadRadius: 3)],
           ),
           child: Stack(
             alignment: Alignment.center,
@@ -148,14 +150,14 @@ class _QuickAddState extends State<QuickAdd> with SingleTickerProviderStateMixin
                 angle: v * math.pi / 2,
                 child: Opacity(
                   opacity: 1 - v,
-                  child: const Icon(Icons.edit_outlined, color: kOrange, size: 26),
+                  child: Icon(Icons.edit_outlined, color: kOrange, size: 26),
                 ),
               ),
               Transform.rotate(
                 angle: (v - 1) * math.pi / 2,
                 child: Opacity(
                   opacity: v,
-                  child: const Icon(Icons.close_rounded, color: Color(0xFF0A0D0E), size: 28),
+                  child: const Icon(Icons.close_rounded, color: kOnAccent, size: 28),
                 ),
               ),
             ],
@@ -180,7 +182,7 @@ class _QuickAddState extends State<QuickAdd> with SingleTickerProviderStateMixin
                   behavior: HitTestBehavior.opaque,
                   onTap: _close,
                   child: ColoredBox(
-                    color: Colors.black.withAlpha((170 * Curves.easeOut.transform(v)).round()),
+                    color: (Pal.dark ? Colors.black : const Color(0xFF101818)).withAlpha((170 * Curves.easeOut.transform(v)).round()),
                   ),
                 ),
               ),

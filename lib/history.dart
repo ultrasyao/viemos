@@ -1,3 +1,4 @@
+import 'strings.dart';
 import 'package:flutter/material.dart';
 import 'db.dart';
 import 'txn_row.dart';
@@ -36,15 +37,15 @@ class _HistoryState extends State<HistoryScreen> {
       key: const PageStorageKey('page_history'),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
-        const Text('Riwayat', style: kTitle),
+        Text(tr('Riwayat'), style: kTitle),
         const SizedBox(height: 4),
-        const Text('Ketuk untuk ubah / hapus · geser ke kiri atau tahan lama untuk hapus cepat',
+        Text(tr('Ketuk untuk ubah / hapus · geser ke kiri atau tahan lama untuk hapus cepat'),
             style: TextStyle(color: kMuted, fontSize: 13)),
         const SizedBox(height: 16),
         if (list.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
-            child: Center(child: Text('Belum ada transaksi', style: TextStyle(color: kMuted))),
+            child: Center(child: Text(tr('Belum ada transaksi'), style: TextStyle(color: kMuted))),
           ),
         for (final t in list)
           Padding(
