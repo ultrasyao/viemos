@@ -25,24 +25,10 @@ class ViemosApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: Prefs.revision,
-      builder: (context, _, __) => MaterialApp(
+    return MaterialApp(
       title: 'Viemos',
       debugShowCheckedModeBanner: false,
-      themeMode: Prefs.darkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
-        brightness: Brightness.light,
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF4F5F2),
-        colorScheme: ColorScheme.light(primary: kOrange, surface: const Color(0xFFFFFFFF)),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFFF0F2EF),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-        ),
-      ),
-      darkTheme: ThemeData(
         brightness: Brightness.dark,
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFF0A0D0E),
@@ -50,11 +36,13 @@ class ViemosApp extends StatelessWidget {
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: kCard,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
         ),
       ),
       home: const Root(),
-      ),
     );
   }
 }

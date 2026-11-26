@@ -16,7 +16,7 @@ import 'prefs.dart';
 import 'sfx.dart';
 import 'ui.dart';
 
-const kVersion = '0.6.0';
+const kVersion = '0.5.0';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -48,15 +48,15 @@ class _SettingsState extends State<SettingsScreen> {
   // ------------------------------------------------------------ UI helpers
   Widget _section(String t) => Padding(
         padding: const EdgeInsets.only(top: 24, bottom: 8, left: 4),
-        child: Text(tr(t).toUpperCase(),
-            style: TextStyle(
+        child: Text(t.toUpperCase(),
+            style: const TextStyle(
                 color: kMuted, fontSize: 12, letterSpacing: 1.1, fontWeight: FontWeight.w600)),
       );
 
   Widget _group(List<Widget> rows) {
     final kids = <Widget>[];
     for (var i = 0; i < rows.length; i++) {
-      if (i > 0) kids.add(Divider(height: 1, color: kBorder, indent: 66));
+      if (i > 0) kids.add(const Divider(height: 1, color: kBorder, indent: 66));
       kids.add(rows[i]);
     }
     return Material(
@@ -64,7 +64,7 @@ class _SettingsState extends State<SettingsScreen> {
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(22),
-        side: BorderSide(color: kBorder),
+        side: const BorderSide(color: kBorder),
       ),
       child: Column(children: kids),
     );
@@ -101,12 +101,12 @@ class _SettingsState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(tr(title),
+                  Text(title,
                       style: TextStyle(fontWeight: FontWeight.w600, color: color ?? kText)),
                   if (sub != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(tr(sub), style: TextStyle(color: kMuted, fontSize: 12.5)),
+                      child: Text(sub, style: const TextStyle(color: kMuted, fontSize: 12.5)),
                     ),
                 ],
               ),
@@ -133,7 +133,7 @@ class _SettingsState extends State<SettingsScreen> {
         trailing: IgnorePointer(child: Switch(value: value, onChanged: (_) {})),
       );
 
-  Widget _chev() => Icon(Icons.chevron_right_rounded, color: kMuted);
+  Widget _chev() => const Icon(Icons.chevron_right_rounded, color: kMuted);
 
   void _ok(String title, {String? sub, IconData icon = Icons.check_rounded}) {
     if (!mounted) return;
@@ -198,31 +198,6 @@ class _SettingsState extends State<SettingsScreen> {
     );
     if (v == null) return;
     await Prefs.setLockAfter(v);
-    if (mounted) setState(() {});
-  }
-
-
-  Future<void> _pickTheme() async {
-    final v = await choiceDialog<bool>(
-      context,
-      title: tr('Tema aplikasi'),
-      selected: Prefs.darkMode,
-      options: [(true, tr('Gelap')), (false, tr('Terang'))],
-    );
-    if (v == null) return;
-    await Prefs.setDarkMode(v);
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _pickLanguage() async {
-    final v = await choiceDialog<String>(
-      context,
-      title: tr('Bahasa aplikasi'),
-      selected: Prefs.language,
-      options: const [('id', 'Bahasa Indonesia'), ('en', 'English')],
-    );
-    if (v == null) return;
-    await Prefs.setLanguage(v);
     if (mounted) setState(() {});
   }
 
@@ -509,12 +484,7 @@ class _SettingsState extends State<SettingsScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
       children: [
-        Text(tr('Setting'), style: kTitle),
-        _section('Tampilan'),
-        _group([
-          _row(icon: Icons.palette_outlined, title: tr('Mode tampilan'), sub: tr(Prefs.darkMode ? 'Gelap' : 'Terang'), onTap: _pickTheme, trailing: _chev()),
-          _row(icon: Icons.language_rounded, title: tr('Bahasa / Language'), sub: Prefs.language == 'id' ? 'Bahasa Indonesia' : 'English', onTap: _pickLanguage, trailing: _chev()),
-        ]),
+        const Text('Setting', style: kTitle),
         _section('Keamanan'),
         _group([
           _row(

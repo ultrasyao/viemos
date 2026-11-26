@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'accounts.dart';
-import 'cashier.dart';
 import 'add.dart';
 import 'history.dart';
 import 'quick_add.dart';
@@ -23,7 +22,6 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int i = 0;
   bool compact = false;
-  bool cashierMode = false;
   Timer? _idle;
 
   @override
@@ -76,7 +74,6 @@ class _ShellState extends State<Shell> {
     _idle?.cancel();
     setState(() {
       i = k;
-      cashierMode = false;
       compact = false;
     });
   }
@@ -86,14 +83,12 @@ class _ShellState extends State<Shell> {
     final safeBottom = MediaQuery.of(context).padding.bottom;
     return Scaffold(
       body: DecoratedBox(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: kDarkMode
-                ? [const Color(0xFF0A0D0E), const Color(0xFF0A0D0E), const Color(0xFF2B1B21)]
-                : [const Color(0xFFF4F5F2), const Color(0xFFF4F5F2), const Color(0xFFFFE8D5)],
-            stops: const [0, 0.6, 1],
+            colors: [Color(0xFF0A0D0E), Color(0xFF0A0D0E), Color(0xFF2B1B21)],
+            stops: [0, 0.6, 1],
           ),
         ),
         child: Stack(
@@ -121,57 +116,11 @@ class _ShellState extends State<Shell> {
                         );
                       },
                     ),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 380),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      transitionBuilder: (child, animation) {
-                        final isIncoming = child.key == ValueKey('cashier-$cashierMode');
-                        final begin = isIncoming ? const Offset(1, 0) : const Offset(-1, 0);
-                        return ClipRect(
-                          child: SlideTransition(
-                            position: Tween<Offset>(begin: begin, end: Offset.zero).animate(animation),
-                            child: FadeTransition(opacity: animation, child: child),
-                          ),
-                        );
-                      },
-                      child: cashierMode
-                          ? const CashierScreen(key: ValueKey('cashier-true'))
-                          : KeyedSubtree(key: const ValueKey('cashier-false'), child: _page(i)),
-                    ),
+                    child: _page(i),
                   ),
                 ),
               ),
             ),
-            if (i == 0)
-              Positioned(
-                top: 4,
-                right: 20,
-                child: SafeArea(
-                  bottom: false,
-                  child: Material(
-                    color: kCard,
-                    borderRadius: BorderRadius.circular(18),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(18),
-                      onTap: () {
-                        Sfx.click();
-                        setState(() => cashierMode = !cashierMode);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(cashierMode ? Icons.receipt_long_rounded : Icons.point_of_sale_rounded, size: 17, color: kOrange),
-                          const SizedBox(width: 7),
-                          Text(tr(cashierMode ? 'Mode transaksi' : 'Mode kasir'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: kText)),
-                          const SizedBox(width: 4),
-                          Icon(Icons.swap_horiz_rounded, size: 15, color: kMuted),
-                        ]),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             Positioned(
               left: 0,
               right: 0,
@@ -188,7 +137,7 @@ class _ShellState extends State<Shell> {
             ),
             Positioned.fill(
               child: QuickAdd(
-                visible: i != 4 && !cashierMode,
+                visible: i != 4,
                 bottom: safeBottom + 14 + (compact ? _pillSmall : _pillFull) + 8,
                 onPick: (t) => showTxnDialog(context, t),
               ),
@@ -298,7 +247,7 @@ class _NavPillState extends State<NavPill> {
                         width: w,
                         height: barH,
                         decoration: BoxDecoration(
-                          color: kCard,
+                          color: const Color(0xFF171E1F),
                           borderRadius: BorderRadius.circular(barH / 2),
                           border: Border.all(color: kBorder),
                         ),

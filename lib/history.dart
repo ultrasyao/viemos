@@ -35,15 +35,15 @@ class _HistoryState extends State<HistoryScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
-        Text(tr('Riwayat'), style: kTitle),
+        const Text('Riwayat', style: kTitle),
         const SizedBox(height: 4),
-        Text(tr('Ketuk untuk ubah · geser ke kiri untuk hapus'),
+        const Text('Ketuk untuk ubah · geser ke kiri untuk hapus',
             style: TextStyle(color: kMuted, fontSize: 13)),
         const SizedBox(height: 16),
         if (list.isEmpty)
-          Padding(
+          const Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
-            child: Center(child: Text(tr('Belum ada transaksi'), style: TextStyle(color: kMuted))),
+            child: Center(child: Text('Belum ada transaksi', style: TextStyle(color: kMuted))),
           ),
         for (final t in list)
           Padding(

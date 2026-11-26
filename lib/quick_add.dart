@@ -98,7 +98,7 @@ class _QuickAddState extends State<QuickAdd> with SingleTickerProviderStateMixin
                         border: Border.all(color: kBorder),
                       ),
                       child: Text(it.label,
-                          style: TextStyle(fontWeight: FontWeight.w600, color: kText)),
+                          style: const TextStyle(fontWeight: FontWeight.w600, color: kText)),
                     ),
                     const SizedBox(width: 12),
                     Container(
@@ -106,7 +106,7 @@ class _QuickAddState extends State<QuickAdd> with SingleTickerProviderStateMixin
                       height: 52,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: kCard,
+                        color: const Color(0xFF151C1D),
                         border: Border.all(color: it.color, width: 2),
                         boxShadow: [BoxShadow(color: it.color.withAlpha(70), blurRadius: 18)],
                       ),
@@ -148,14 +148,14 @@ class _QuickAddState extends State<QuickAdd> with SingleTickerProviderStateMixin
                 angle: v * math.pi / 2,
                 child: Opacity(
                   opacity: 1 - v,
-                  child: Icon(Icons.edit_outlined, color: kOrange, size: 26),
+                  child: const Icon(Icons.edit_outlined, color: kOrange, size: 26),
                 ),
               ),
               Transform.rotate(
                 angle: (v - 1) * math.pi / 2,
                 child: Opacity(
                   opacity: v,
-                  child: Icon(Icons.close_rounded, color: Color(0xFF0A0D0E), size: 28),
+                  child: const Icon(Icons.close_rounded, color: Color(0xFF0A0D0E), size: 28),
                 ),
               ),
             ],

@@ -116,7 +116,7 @@ class AppPanel extends StatelessWidget {
         child: SizedBox(
           width: double.infinity,
           child: Material(
-            color: kCard,
+            color: const Color(0xFF111718),
             elevation: 12,
             shadowColor: accent,
             clipBehavior: Clip.antiAlias,
@@ -151,10 +151,10 @@ Future<bool> confirmDialog(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
           if (message != null) ...[
             const SizedBox(height: 10),
-            Text(message, style: TextStyle(color: kMuted, height: 1.4)),
+            Text(message, style: const TextStyle(color: kMuted, height: 1.4)),
           ],
           const SizedBox(height: 20),
           Row(
@@ -189,7 +189,7 @@ Future<T?> choiceDialog<T>(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           for (final o in options)
             Padding(
@@ -211,7 +211,7 @@ Future<T?> choiceDialog<T>(
                                 fontWeight: FontWeight.w600,
                                 color: o.$1 == selected ? kOrange : kText)),
                       ),
-                      if (o.$1 == selected) Icon(Icons.check_rounded, color: kOrange, size: 20),
+                      if (o.$1 == selected) const Icon(Icons.check_rounded, color: kOrange, size: 20),
                     ],
                   ),
                 ),

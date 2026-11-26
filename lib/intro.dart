@@ -86,52 +86,23 @@ class _IntroState extends State<Intro> with SingleTickerProviderStateMixin {
     if (_c.value < _soundAt - 0.02) _c.forward(from: _soundAt - 0.04);
   }
 
-  Widget _outlinedLetter(String ch, int i) {
-    final start = 0.04 + i * 0.045;
-    final t = Interval(start, start + 0.2, curve: Curves.easeOutCubic).transform(_c.value);
+  Widget _letter(String ch, int i) {
+    final s = 0.04 + i * 0.045;
+    final t = Interval(s, s + 0.2, curve: Curves.easeOutCubic).transform(_c.value);
+    Widget w = Text(ch, style: _style);
+    final sig = (1 - t) * 10;
+    if (sig > 0.2) {
+      w = ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: sig, sigmaY: sig), child: w);
+    }
     return Opacity(
       opacity: t,
-      child: Transform.translate(
-        offset: Offset(0, (1 - t) * 26),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Text(ch, style: TextStyle(
-              fontSize: _style.fontSize,
-              fontWeight: _style.fontWeight,
-              letterSpacing: _style.letterSpacing,
-              foreground: Paint()..style = PaintingStyle.stroke..strokeWidth = 2.4..color = const Color(0xFF7A431F),
-            )),
-            Text(ch, style: _style),
-          ],
-        ),
-      ),
+      child: Transform.translate(offset: Offset(0, (1 - t) * 26), child: w),
     );
   }
 
-  Widget _outlinedWord({bool fill = true}) => Row(
+  Widget _plainWord() => Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < _word.length; i++)
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Text(
-                  _word[i],
-                  style: TextStyle(
-                    fontSize: _style.fontSize,
-                    fontWeight: _style.fontWeight,
-                    letterSpacing: _style.letterSpacing,
-                    foreground: Paint()
-                      ..style = PaintingStyle.stroke
-                      ..strokeWidth = 2.4
-                      ..color = const Color(0xFFFFB066),
-                  ),
-                ),
-                if (fill) Text(_word[i], style: _style),
-              ],
-            ),
-        ],
+        children: [for (var i = 0; i < _word.length; i++) Text(_word[i], style: _style)],
       );
 
   @override
@@ -179,7 +150,7 @@ class _IntroState extends State<Intro> with SingleTickerProviderStateMixin {
                   colorFilter:
                       ColorFilter.mode(_bg.withAlpha((255 * bgA).round()), BlendMode.srcOut),
                   child: SizedBox.expand(
-                    child: Center(child: depthWord(_outlinedWord())),
+                    child: Center(child: depthWord(_plainWord())),
                   ),
                 );
 
@@ -202,9 +173,7 @@ class _IntroState extends State<Intro> with SingleTickerProviderStateMixin {
                         ).createShader(r),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (var i = 0; i < _word.length; i++) _outlinedLetter(_word[i], i),
-                          ],
+                          children: [for (var i = 0; i < _word.length; i++) _letter(_word[i], i)],
                         ),
                       ),
                     ),
@@ -217,7 +186,7 @@ class _IntroState extends State<Intro> with SingleTickerProviderStateMixin {
                     opacity: tag,
                     child: Transform.translate(
                       offset: Offset(0, (1 - tagIn) * 10),
-                      child: Text('Catat. Pantau. Tenang.',
+                      child: const Text('Catat. Pantau. Tenang.',
                           style: TextStyle(color: kMuted, letterSpacing: 2, fontSize: 13)),
                     ),
                   ),

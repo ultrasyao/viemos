@@ -121,14 +121,12 @@ class _AppLockState extends State<AppLock> with WidgetsBindingObserver {
   }
 }
 
-BoxDecoration get _bgGradient => BoxDecoration(
+const _bgGradient = BoxDecoration(
   gradient: LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: kDarkMode
-        ? const [Color(0xFF0A0D0E), Color(0xFF0A0D0E), Color(0xFF2B1B21)]
-        : const [Color(0xFFF4F5F2), Color(0xFFF4F5F2), Color(0xFFFFE8D5)],
-    stops: const [0, 0.55, 1],
+    colors: [Color(0xFF0A0D0E), Color(0xFF0A0D0E), Color(0xFF2B1B21)],
+    stops: [0, 0.55, 1],
   ),
 );
 
@@ -153,7 +151,7 @@ class _LockScreen extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: () {},
         child: Material(
-          color: kDarkMode ? const Color(0xFF0A0D0E) : const Color(0xFFF4F5F2),
+          color: const Color(0xFF0A0D0E),
           child: _PinBg(
             child: Column(
               children: [
@@ -172,14 +170,14 @@ class _LockScreen extends StatelessWidget {
                       border: Border.all(color: kOrange, width: 2.5),
                       boxShadow: const [BoxShadow(color: kGlow, blurRadius: 30, spreadRadius: 3)],
                     ),
-                    child: Icon(Icons.lock_rounded, color: kOrange, size: 30),
+                    child: const Icon(Icons.lock_rounded, color: kOrange, size: 30),
                   ),
                 ),
                 const SizedBox(height: 14),
-                Text('Viemos',
+                const Text('Viemos',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: 1)),
                 const SizedBox(height: 2),
-                Text('Aplikasi terkunci', style: TextStyle(color: kMuted, fontSize: 13)),
+                const Text('Aplikasi terkunci', style: TextStyle(color: kMuted, fontSize: 13)),
                 Expanded(
                   child: PinPad(
                     title: 'Masukkan PIN',
@@ -295,7 +293,7 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
 
   Widget _digit(String d) => _PadKey(
         onTap: () => _tap(d),
-        child: Text(d, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600)),
+        child: Text(d, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600)),
       );
 
   Widget _row(int k, List<Widget> keys) => TweenAnimationBuilder<double>(
@@ -318,7 +316,7 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.title, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
+            Text(widget.title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             SizedBox(
               height: 38,
@@ -376,14 +374,14 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
                   : _PadKey(
                       ghost: true,
                       onTap: widget.onCancel,
-                      child: Icon(Icons.close_rounded, color: kMuted, size: 28),
+                      child: const Icon(Icons.close_rounded, color: kMuted, size: 28),
                     ),
               _digit('0'),
               _PadKey(
                 ghost: true,
                 onTap: _del,
                 onLong: _clear,
-                child: Icon(Icons.backspace_outlined, color: kMuted, size: 25),
+                child: const Icon(Icons.backspace_outlined, color: kMuted, size: 25),
               ),
             ]),
           ],
