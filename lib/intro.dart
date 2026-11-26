@@ -132,6 +132,16 @@ class _IntroState extends State<Intro> with SingleTickerProviderStateMixin {
           final tagIn = const Interval(0.40, 0.52, curve: Curves.easeOutCubic).transform(c);
           final tagOut = const Interval(0.57, 0.64).transform(c);
           final tag = tagIn * (1 - tagOut);
+          // Perspektif 3D halus: logo sedikit miring saat mendekat, lalu
+          // menghadap lurus sebelum membesar menembus layar.
+          Widget depthWord(Widget child) => Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.0017)
+                  ..rotateX((1 - zq) * -0.16)
+                  ..rotateY((1 - zq) * 0.24),
+                child: Transform.scale(scale: scale, child: child),
+              );
 
           final Widget backdrop = c < _zoomAt
               ? const ColoredBox(color: _bg)
@@ -140,7 +150,7 @@ class _IntroState extends State<Intro> with SingleTickerProviderStateMixin {
                   colorFilter:
                       ColorFilter.mode(_bg.withAlpha((255 * bgA).round()), BlendMode.srcOut),
                   child: SizedBox.expand(
-                    child: Center(child: Transform.scale(scale: scale, child: _plainWord())),
+                    child: Center(child: depthWord(_plainWord())),
                   ),
                 );
 
@@ -152,9 +162,8 @@ class _IntroState extends State<Intro> with SingleTickerProviderStateMixin {
                 Center(
                   child: Opacity(
                     opacity: whiteOp,
-                    child: Transform.scale(
-                      scale: scale,
-                      child: ShaderMask(
+                    child: depthWord(
+                      ShaderMask(
                         blendMode: BlendMode.srcIn,
                         shaderCallback: (r) => LinearGradient(
                           begin: Alignment(-2 + 4 * shine, 0),

@@ -28,6 +28,18 @@ Future<void> showTxnDialog(BuildContext context, String type, {Txn? edit}) async
     builder: (_) => TxnDialog(type: type, accounts: accs, edit: edit),
   );
   if (saved != null && context.mounted) {
+    if (saved.deleted) {
+      showIsland(
+        context,
+        title: 'Transaksi dihapus',
+        subtitle: 'Riwayat dan saldo rekening telah diperbarui',
+        amount: money(saved.amount),
+        icon: Icons.delete_outline_rounded,
+        color: kOut,
+        sound: 'out',
+      );
+      return;
+    }
     final isTf = saved.type == 'transfer';
     final where = isTf ? '${saved.from} → ${saved.to ?? '?'}' : saved.from;
     final sub = saved.note.isEmpty ? where : '$where · ${saved.note}';
@@ -48,8 +60,9 @@ class SavedTxn {
   final String type, from, note;
   final String? to;
   final int amount;
-  final bool edited;
-  const SavedTxn(this.type, this.from, this.to, this.amount, this.note, {this.edited = false});
+  final bool edited, deleted;
+  const SavedTxn(this.type, this.from, this.to, this.amount, this.note,
+      {this.edited = false, this.deleted = false});
 }
 
 class TxnDialog extends StatefulWidget {
@@ -69,7 +82,7 @@ class _TxnDialogState extends State<TxnDialog> {
   late final amountC = TextEditingController(
       text: widget.edit == null ? '' : moneyInput(widget.edit!.amount));
   late final noteC = TextEditingController(text: widget.edit?.note ?? '');
-  final amountF = FocusNode();
+  bool _showAmountPad = true;
   late DateTime when = widget.edit?.ts ?? DateTime.now();
   String? err;
   bool _busy = false;
@@ -91,16 +104,12 @@ class _TxnDialogState extends State<TxnDialog> {
       to = e.toAccountId;
     }
     _fixTo();
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) amountF.requestFocus();
-    });
   }
 
   @override
   void dispose() {
     amountC.dispose();
     noteC.dispose();
-    amountF.dispose();
     super.dispose();
   }
 
@@ -120,6 +129,136 @@ class _TxnDialogState extends State<TxnDialog> {
     final t = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(when));
     if (t == null) return;
     setState(() => when = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+  }
+
+  void _setAmountKey(String key) {
+    final current = amountC.text;
+    var raw = current.replaceAll('.', '');
+    if (key == '⌫') {
+      if (raw.isNotEmpty) raw = raw.substring(0, raw.length - 1);
+    } else if (key == 'C') {
+      raw = '';
+    } else if (key == ',') {
+      if (raw.contains(',')) return;
+      raw = raw.isEmpty ? '0,' : '$raw,';
+    } else {
+      final comma = raw.indexOf(',');
+      if (comma >= 0 && raw.length - comma - 1 >= 2) return;
+      if (raw == '0') {
+        raw = key;
+      } else {
+        raw += key;
+      }
+    }
+    final formatted = MoneyFormatter().formatEditUpdate(
+      TextEditingValue(text: current, selection: TextSelection.collapsed(offset: current.length)),
+      TextEditingValue(text: raw, selection: TextSelection.collapsed(offset: raw.length)),
+    );
+    setState(() {
+      amountC.value = formatted;
+      _showAmountPad = true;
+      err = null;
+    });
+  }
+
+  Widget _amountKeyboard() {
+    const rows = [
+      ['1', '2', '3'],
+      ['4', '5', '6'],
+      ['7', '8', '9'],
+      [',', '0', '⌫'],
+    ];
+    Widget key(String value) {
+      final special = value == '⌫' || value == ',';
+      return Expanded(
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Material(
+            color: special ? _c.withAlpha(28) : kCard,
+            borderRadius: BorderRadius.circular(13),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(13),
+              onTap: () {
+                Sfx.click();
+                _setAmountKey(value);
+              },
+              child: SizedBox(
+                height: 46,
+                child: Center(
+                  child: value == '⌫'
+                      ? Icon(Icons.backspace_outlined, color: _c, size: 20)
+                      : Text(value, style: TextStyle(
+                          color: special ? _c : kText,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                        )),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      child: _showAmountPad
+          ? Container(
+              margin: const EdgeInsets.only(top: 10),
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0C1112),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: kBorder),
+              ),
+              child: Column(
+                children: [
+                  for (final row in rows)
+                    Row(children: [for (final value in row) key(value)]),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton.icon(
+                          onPressed: () => _setAmountKey('C'),
+                          icon: const Icon(Icons.clear_rounded, size: 17),
+                          label: const Text('Bersihkan'),
+                          style: TextButton.styleFrom(foregroundColor: kMuted),
+                        ),
+                      ),
+                      Expanded(
+                        child: TextButton.icon(
+                          onPressed: () => setState(() => _showAmountPad = false),
+                          icon: const Icon(Icons.keyboard_hide_rounded, size: 17),
+                          label: const Text('Tutup'),
+                          style: TextButton.styleFrom(foregroundColor: _c),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+
+  Future<void> _delete() async {
+    if (_busy || widget.edit == null) return;
+    final ok = await confirmDialog(
+      context,
+      title: 'Hapus transaksi?',
+      message: 'Transaksi ini akan dihapus permanen dan saldo rekening akan dihitung ulang.',
+      confirmText: 'Hapus',
+      danger: true,
+    );
+    if (!ok || !mounted) return;
+    _busy = true;
+    await Db.i.deleteTxn(widget.edit!.id);
+    if (!mounted) return;
+    Navigator.pop(
+      context,
+      SavedTxn(type, '', null, widget.edit!.amount, '', deleted: true),
+    );
   }
 
   Future<void> _save() async {
@@ -249,6 +388,14 @@ class _TxnDialogState extends State<TxnDialog> {
                 child: Text(_isEdit ? 'Ubah transaksi' : _names[type]!,
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
               ),
+              if (_isEdit)
+                Bounce(
+                  onTap: _delete,
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(Icons.delete_outline_rounded, color: kOut),
+                  ),
+                ),
               Bounce(
                 onTap: () => Navigator.pop(context),
                 child: const Padding(
@@ -265,17 +412,18 @@ class _TxnDialogState extends State<TxnDialog> {
           const SizedBox(height: 14),
           TextField(
             controller: amountC,
-            focusNode: amountF,
-            inputFormatters: [MoneyFormatter()],
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            readOnly: true,
+            showCursor: false,
+            onTap: () => setState(() => _showAmountPad = true),
             style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
             decoration: InputDecoration(
               hintText: '0',
               prefixText: 'Rp ',
               prefixStyle: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: _c),
-              helperText: 'Koma untuk desimal',
+              helperText: 'Gunakan keypad Viemos di bawah',
             ),
           ),
+          _amountKeyboard(),
           _lbl(isTf ? 'Dari rekening' : 'Rekening'),
           _chips(from, (id) => setState(() {
                 from = id;
