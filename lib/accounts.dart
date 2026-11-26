@@ -79,16 +79,16 @@ class _AccountsState extends State<AccountsScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
-        const Text('Rekening', style: kTitle),
+        Text(tr('Rekening'), style: kTitle),
         const SizedBox(height: 16),
         GlassCard(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Total saldo', style: TextStyle(color: kMuted)),
+              Text(tr('Total saldo'), style: TextStyle(color: kMuted)),
               const SizedBox(height: 6),
-              Text(money(total), style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700)),
+              Text(money(total), style: TextStyle(fontSize: 34, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
@@ -109,11 +109,11 @@ class _AccountsState extends State<AccountsScreen> {
                     child: Icon(_kindIcon(a.kind), color: Color(a.color)),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(child: Text(a.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-                  Text(money(a.balance), style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Expanded(child: Text(a.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                  Text(money(a.balance), style: TextStyle(fontWeight: FontWeight.w600)),
                   Bounce(
                     onTap: () => _confirmDelete(a),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.all(10),
                       child: Icon(Icons.delete_outline, color: kMuted, size: 20),
                     ),
@@ -123,12 +123,12 @@ class _AccountsState extends State<AccountsScreen> {
             ),
           ),
         if (accs.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: Text('Belum ada rekening', style: TextStyle(color: kMuted))),
+            child: Center(child: Text(tr('Belum ada rekening'), style: TextStyle(color: kMuted))),
           ),
         const SizedBox(height: 6),
-        AppButton('Tambah rekening', icon: Icons.add, outlined: true, onTap: _add),
+        AppButton(tr('Tambah rekening'), icon: Icons.add, outlined: true, onTap: _add),
       ],
     );
   }
@@ -170,13 +170,13 @@ class _AddAccountState extends State<_AddAccount> {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text('Tambah rekening',
+              Expanded(
+                child: Text(tr('Tambah rekening'),
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
               ),
               Bounce(
                 onTap: () => Navigator.pop(context),
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.all(8),
                   child: Icon(Icons.close_rounded, color: kMuted),
                 ),
@@ -199,16 +199,16 @@ class _AddAccountState extends State<_AddAccount> {
               ),
           ]),
           const SizedBox(height: 14),
-          TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Nama rekening')),
+          TextField(controller: nameC, decoration: InputDecoration(labelText: tr('Nama rekening'))),
           const SizedBox(height: 10),
           TextField(
             controller: balC,
             inputFormatters: [MoneyFormatter()],
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Saldo awal (opsional)', prefixText: 'Rp '),
+            decoration: InputDecoration(labelText: tr('Saldo awal (opsional)'), prefixText: 'Rp '),
           ),
           const SizedBox(height: 18),
-          AppButton('Simpan', onTap: _save),
+          AppButton(tr('Simpan'), onTap: _save),
         ],
       ),
     );

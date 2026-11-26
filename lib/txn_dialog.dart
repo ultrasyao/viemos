@@ -82,7 +82,7 @@ class _TxnDialogState extends State<TxnDialog> {
   late final amountC = TextEditingController(
       text: widget.edit == null ? '' : moneyInput(widget.edit!.amount));
   late final noteC = TextEditingController(text: widget.edit?.note ?? '');
-  bool _showAmountPad = true;
+  bool _keypadOpen = false;
   late DateTime when = widget.edit?.ts ?? DateTime.now();
   String? err;
   bool _busy = false;
@@ -156,90 +156,80 @@ class _TxnDialogState extends State<TxnDialog> {
     );
     setState(() {
       amountC.value = formatted;
-      _showAmountPad = true;
+      _keypadOpen = true;
       err = null;
     });
   }
 
-  Widget _amountKeyboard() {
-    const rows = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      [',', '0', '⌫'],
-    ];
-    Widget key(String value) {
-      final special = value == '⌫' || value == ',';
-      return Expanded(
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Material(
-            color: special ? _c.withAlpha(28) : kCard,
-            borderRadius: BorderRadius.circular(13),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(13),
-              onTap: () {
-                Sfx.click();
-                _setAmountKey(value);
-              },
-              child: SizedBox(
-                height: 46,
-                child: Center(
-                  child: value == '⌫'
-                      ? Icon(Icons.backspace_outlined, color: _c, size: 20)
-                      : Text(value, style: TextStyle(
-                          color: special ? _c : kText,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                        )),
+  Future<void> _openAmountKeyboard() async {
+    if (_keypadOpen) return;
+    _keypadOpen = true;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: false,
+      builder: (sheetContext) {
+        const rows = [
+          ['1', '2', '3'],
+          ['4', '5', '6'],
+          ['7', '8', '9'],
+          [',', '0', '⌫'],
+        ];
+        Widget key(String value) {
+          final special = value == '⌫' || value == ',';
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Material(
+                color: special ? _c.withAlpha(28) : kCard,
+                borderRadius: BorderRadius.circular(13),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(13),
+                  onTap: () {
+                    Sfx.click();
+                    _setAmountKey(value);
+                  },
+                  child: SizedBox(
+                    height: 48,
+                    child: Center(
+                      child: value == '⌫'
+                          ? Icon(Icons.backspace_outlined, color: _c, size: 20)
+                          : Text(value, style: TextStyle(color: special ? _c : kText, fontSize: 19, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
                 ),
               ),
             ),
+          );
+        }
+        return SafeArea(
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: kCard,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: _c.withAlpha(100)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(children: [
+                  Expanded(child: Text(tr('Keypad Viemos'), style: TextStyle(fontWeight: FontWeight.w700, color: kText))),
+                  IconButton(onPressed: () => Navigator.pop(sheetContext), icon: Icon(Icons.keyboard_hide_rounded, color: kMuted)),
+                ]),
+                for (final row in rows) Row(children: [for (final value in row) key(value)]),
+                Row(children: [
+                  Expanded(child: TextButton.icon(onPressed: () => _setAmountKey('C'), icon: Icon(Icons.clear_rounded, size: 17), label: Text(tr('Bersihkan')), style: TextButton.styleFrom(foregroundColor: kMuted))),
+                  Expanded(child: TextButton(onPressed: () => Navigator.pop(sheetContext), child: Text(tr('Selesai'), style: TextStyle(color: _c)))),
+                ]),
+              ],
+            ),
           ),
-        ),
-      );
-    }
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
-      child: _showAmountPad
-          ? Container(
-              margin: const EdgeInsets.only(top: 10),
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0C1112),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: kBorder),
-              ),
-              child: Column(
-                children: [
-                  for (final row in rows)
-                    Row(children: [for (final value in row) key(value)]),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton.icon(
-                          onPressed: () => _setAmountKey('C'),
-                          icon: const Icon(Icons.clear_rounded, size: 17),
-                          label: const Text('Bersihkan'),
-                          style: TextButton.styleFrom(foregroundColor: kMuted),
-                        ),
-                      ),
-                      Expanded(
-                        child: TextButton.icon(
-                          onPressed: () => setState(() => _showAmountPad = false),
-                          icon: const Icon(Icons.keyboard_hide_rounded, size: 17),
-                          label: const Text('Tutup'),
-                          style: TextButton.styleFrom(foregroundColor: _c),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            )
-          : const SizedBox.shrink(),
+        );
+      },
     );
+    _keypadOpen = false;
   }
 
   Future<void> _delete() async {
@@ -306,7 +296,7 @@ class _TxnDialogState extends State<TxnDialog> {
 
   Widget _lbl(String t) => Padding(
         padding: const EdgeInsets.only(top: 14, bottom: 8),
-        child: Text(t, style: const TextStyle(color: kMuted, fontSize: 13)),
+        child: Text(tr(t), style: TextStyle(color: kMuted, fontSize: 13)),
       );
 
   Widget _chips(int? sel, ValueChanged<int> on, {int? exclude}) => Wrap(
@@ -351,7 +341,7 @@ class _TxnDialogState extends State<TxnDialog> {
                       children: [
                         Icon(_icon(t), size: 18, color: type == t ? _accent(t) : kMuted),
                         const SizedBox(height: 3),
-                        Text(_names[t]!,
+                        Text(tr(_names[t]!),
                             style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w600,
@@ -385,20 +375,20 @@ class _TxnDialogState extends State<TxnDialog> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(_isEdit ? 'Ubah transaksi' : _names[type]!,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                child: Text(_isEdit ? tr('Ubah transaksi') : tr(_names[type]!),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
               ),
               if (_isEdit)
                 Bounce(
                   onTap: _delete,
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(8),
                     child: Icon(Icons.delete_outline_rounded, color: kOut),
                   ),
                 ),
               Bounce(
                 onTap: () => Navigator.pop(context),
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.all(8),
                   child: Icon(Icons.close_rounded, color: kMuted),
                 ),
@@ -410,21 +400,48 @@ class _TxnDialogState extends State<TxnDialog> {
             _typeTabs(),
           ],
           const SizedBox(height: 14),
-          TextField(
-            controller: amountC,
-            readOnly: true,
-            showCursor: false,
-            onTap: () => setState(() => _showAmountPad = true),
-            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
-            decoration: InputDecoration(
-              hintText: '0',
-              prefixText: 'Rp ',
-              prefixStyle: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: _c),
-              helperText: 'Gunakan keypad Viemos di bawah',
+          // Prefix dipisah dari TextField agar "Rp" selalu terlihat,
+          // termasuk saat jumlah masih kosong dan field belum disentuh.
+          Material(
+            color: kCard,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: _openAmountKeyboard,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: kBorder),
+                ),
+                child: Row(
+                  children: [
+                    Text('Rp', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w700, color: _c)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: IgnorePointer(
+                        child: TextField(
+                          controller: amountC,
+                          readOnly: true,
+                          showCursor: false,
+                          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: kText),
+                          decoration: InputDecoration(
+                            hintText: '0',
+                            hintStyle: TextStyle(color: kMuted.withAlpha(150)),
+                            border: InputBorder.none,
+                            filled: false,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.dialpad_rounded, color: kMuted, size: 20),
+                  ],
+                ),
+              ),
             ),
           ),
-          _amountKeyboard(),
-          _lbl(isTf ? 'Dari rekening' : 'Rekening'),
+          _lbl(isTf ? 'Dari rekening' : tr('Rekening')),
           _chips(from, (id) => setState(() {
                 from = id;
                 _fixTo();
@@ -433,28 +450,29 @@ class _TxnDialogState extends State<TxnDialog> {
             _lbl('Ke rekening'),
             _chips(to, (id) => setState(() => to = id), exclude: from),
           ],
-          _lbl('Waktu'),
+          _lbl(tr('Waktu')),
           GlassCard(
             onTap: _pick,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(children: [
-              const Icon(Icons.schedule, color: kMuted, size: 20),
+              Icon(Icons.schedule, color: kMuted, size: 20),
               const SizedBox(width: 10),
               Text(fmtDate(when)),
             ]),
           ),
-          _lbl('Catatan (opsional)'),
+          _lbl(tr('Catatan (opsional)')),
           TextField(
             controller: noteC,
-            decoration: const InputDecoration(hintText: 'Mis. makan siang'),
+            decoration: InputDecoration(hintText: kEnglish ? 'E.g. lunch, transport, groceries' : 'Contoh: Makan siang, transportasi, belanja',
+              hintStyle: TextStyle(color: kMuted.withAlpha(190))),
           ),
           if (err != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(err!, style: const TextStyle(color: kOut)),
+              child: Text(err!, style: TextStyle(color: kOut)),
             ),
           const SizedBox(height: 18),
-          AppButton(_isEdit ? 'Simpan perubahan' : 'Simpan', color: _c, onTap: _save),
+          AppButton(_isEdit ? tr('Simpan perubahan') : tr('Simpan'), color: _c, onTap: _save),
         ],
       ),
     );

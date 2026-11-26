@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import 'sfx.dart';
 import 'ui.dart';
 
@@ -9,6 +10,7 @@ import 'ui.dart';
 class Prefs {
   Prefs._();
   static SharedPreferences? _sp;
+  static final ValueNotifier<int> revision = ValueNotifier<int>(0);
   static SharedPreferences get _p => _sp!;
 
   static Future<void> load() async {
@@ -21,6 +23,21 @@ class Prefs {
     Sfx.enabled = sound;
     Sfx.haptic = haptic;
     kDecimals = decimals;
+    kDarkMode = darkMode;
+    kEnglish = language == 'en';
+  }
+
+  static bool get darkMode => _p.getBool('dark_mode') ?? true;
+  static String get language => _p.getString('language') ?? 'id';
+  static Future<void> setDarkMode(bool v) async {
+    await _p.setBool('dark_mode', v);
+    apply();
+    revision.value++;
+  }
+  static Future<void> setLanguage(String v) async {
+    await _p.setString('language', v);
+    apply();
+    revision.value++;
   }
 
   // ---- tampilan & suara

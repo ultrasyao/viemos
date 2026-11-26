@@ -30,7 +30,7 @@ class TxnSwipe extends StatelessWidget {
         padding: const EdgeInsets.only(right: 22),
         decoration: BoxDecoration(
             color: const Color(0x33FF8F85), borderRadius: BorderRadius.circular(22)),
-        child: const Icon(Icons.delete_outline, color: kOut),
+        child: Icon(Icons.delete_outline, color: kOut),
       ),
       child: TxnTile(t, onTap: () => showTxnDialog(context, t.type, edit: t)),
     );
@@ -69,12 +69,12 @@ class TxnTile extends StatelessWidget {
                 Text(t.note.isEmpty ? name : t.note,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 3),
                 Text('$where · $when',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: kMuted, fontSize: 12)),
+                    style: TextStyle(color: kMuted, fontSize: 12)),
               ],
             ),
           ),

@@ -57,7 +57,7 @@ class _AddTxnState extends State<AddTxnScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(color: kMuted, fontSize: 12)),
+                  Text(label, style: TextStyle(color: kMuted, fontSize: 12)),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
@@ -82,17 +82,17 @@ class _AddTxnState extends State<AddTxnScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
-        const Text('Catat transaksi', style: kTitle),
+        Text(tr('Catat transaksi'), style: kTitle),
         const SizedBox(height: 4),
         Text('${_hari[n.weekday - 1]}, ${n.day} ${_bulan[n.month - 1]} ${n.year}',
-            style: const TextStyle(color: kMuted)),
+            style: TextStyle(color: kMuted)),
         const SizedBox(height: 16),
         GlassCard(
           padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Hari ini', style: TextStyle(color: kMuted, fontSize: 13)),
+              Text(tr('Hari ini'), style: TextStyle(color: kMuted, fontSize: 13)),
               const SizedBox(height: 4),
               FittedBox(
                 fit: BoxFit.scaleDown,
@@ -105,18 +105,18 @@ class _AddTxnState extends State<AddTxnScreen> {
               ),
               const SizedBox(height: 14),
               Row(children: [
-                _stat('Masuk', inc, kIn, Icons.south_west_rounded),
+                _stat(tr('Masuk'), inc, kIn, Icons.south_west_rounded),
                 const SizedBox(width: 12),
-                _stat('Keluar', out, kOut, Icons.north_east_rounded),
+                _stat(tr('Keluar'), out, kOut, Icons.north_east_rounded),
               ]),
               const SizedBox(height: 14),
-              const Divider(height: 1, color: kBorder),
+              Divider(height: 1, color: kBorder),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Text('Total saldo', style: TextStyle(color: kMuted)),
+                  Text(tr('Total saldo'), style: TextStyle(color: kMuted)),
                   const Spacer(),
-                  Text(money(total), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(money(total), style: TextStyle(fontWeight: FontWeight.w700)),
                 ],
               ),
             ],
@@ -136,12 +136,12 @@ class _AddTxnState extends State<AddTxnScreen> {
                     color: kOrange.withAlpha(28),
                     border: Border.all(color: kOrange.withAlpha(120), width: 2),
                   ),
-                  child: const Icon(Icons.edit_outlined, color: kOrange, size: 28),
+                  child: Icon(Icons.edit_outlined, color: kOrange, size: 28),
                 ),
                 const SizedBox(height: 14),
-                const Text('Belum ada transaksi hari ini', style: TextStyle(color: kMuted)),
+                Text(tr('Belum ada transaksi hari ini'), style: TextStyle(color: kMuted)),
                 const SizedBox(height: 2),
-                const Text('Ketuk tombol pensil di kanan bawah', style: TextStyle(color: kMuted)),
+                Text(tr('Ketuk tombol pensil di kanan bawah'), style: TextStyle(color: kMuted)),
               ],
             ),
           ),

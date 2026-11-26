@@ -123,12 +123,12 @@ class _RecapState extends State<RecapScreen> {
                 Sfx.click();
                 setState(() => month = DateTime(month.year, month.month - 1));
               },
-              icon: const Icon(Icons.chevron_left_rounded),
+              icon: Icon(Icons.chevron_left_rounded),
             ),
             Expanded(
               child: Center(
                 child: Text('${_blnFull[month.month - 1]} ${month.year}',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
               ),
             ),
             IconButton(
@@ -136,7 +136,7 @@ class _RecapState extends State<RecapScreen> {
                 Sfx.click();
                 setState(() => month = DateTime(month.year, month.month + 1));
               },
-              icon: const Icon(Icons.chevron_right_rounded),
+              icon: Icon(Icons.chevron_right_rounded),
             ),
           ],
         ),
@@ -149,7 +149,7 @@ class _RecapState extends State<RecapScreen> {
         },
         child: Row(
           children: [
-            const Icon(Icons.date_range_rounded, color: kMuted),
+            Icon(Icons.date_range_rounded, color: kMuted),
             const SizedBox(width: 10),
             Expanded(
               child: Text(range == null
@@ -167,7 +167,7 @@ class _RecapState extends State<RecapScreen> {
             Row(children: [
               Icon(ic, color: c, size: 18),
               const SizedBox(width: 6),
-              Text(t, style: const TextStyle(color: kMuted, fontSize: 13)),
+              Text(t, style: TextStyle(color: kMuted, fontSize: 13)),
             ]),
             const SizedBox(height: 8),
             FittedBox(
@@ -195,11 +195,11 @@ class _RecapState extends State<RecapScreen> {
           Row(children: [
             _dot(kIn),
             const SizedBox(width: 6),
-            const Text('Masuk', style: TextStyle(color: kMuted, fontSize: 12)),
+            Text('Masuk', style: TextStyle(color: kMuted, fontSize: 12)),
             const SizedBox(width: 14),
             _dot(kOut),
             const SizedBox(width: 6),
-            const Text('Keluar', style: TextStyle(color: kMuted, fontSize: 12)),
+            Text('Keluar', style: TextStyle(color: kMuted, fontSize: 12)),
           ]),
           const SizedBox(height: 12),
           if (bs.isEmpty || maxV == 0)
@@ -245,13 +245,13 @@ class _RecapState extends State<RecapScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
       children: [
-        const Text('Rekap', style: kTitle),
+        Text(tr('Rekap'), style: kTitle),
         const SizedBox(height: 16),
         SegmentedButton<int>(
-          segments: const [
-            ButtonSegment(value: 0, label: Text('Semua')),
-            ButtonSegment(value: 1, label: Text('Bulanan')),
-            ButtonSegment(value: 2, label: Text('Custom')),
+          segments: [
+            ButtonSegment(value: 0, label: Text(tr('Semua'))),
+            ButtonSegment(value: 1, label: Text(tr('Bulanan'))),
+            ButtonSegment(value: 2, label: Text(tr('Custom'))),
           ],
           selected: {mode},
           onSelectionChanged: (s) {
@@ -266,9 +266,9 @@ class _RecapState extends State<RecapScreen> {
         const SizedBox(height: 14),
         Row(
           children: [
-            Expanded(child: _stat('Pemasukan', inc, kIn, Icons.south_west_rounded)),
+            Expanded(child: _stat(tr('Pemasukan'), inc, kIn, Icons.south_west_rounded)),
             const SizedBox(width: 12),
-            Expanded(child: _stat('Pengeluaran', out, kOut, Icons.north_east_rounded)),
+            Expanded(child: _stat(tr('Pengeluaran'), out, kOut, Icons.north_east_rounded)),
           ],
         ),
         const SizedBox(height: 12),
@@ -279,7 +279,7 @@ class _RecapState extends State<RecapScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Selisih', style: TextStyle(color: kMuted, fontSize: 13)),
+                    Text(tr('Selisih'), style: TextStyle(color: kMuted, fontSize: 13)),
                     const SizedBox(height: 4),
                     Text(money(net),
                         style: TextStyle(
@@ -287,17 +287,17 @@ class _RecapState extends State<RecapScreen> {
                   ],
                 ),
               ),
-              Text('${list.length} transaksi', style: const TextStyle(color: kMuted)),
+              Text('${list.length} transaksi', style: TextStyle(color: kMuted)),
             ],
           ),
         ),
         const SizedBox(height: 12),
         _chart(bs),
-        label('Per rekening'),
+        label(tr('Per rekening')),
         if (names.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text('Belum ada pemasukan atau pengeluaran di periode ini',
+            child: Text(tr('Belum ada pemasukan atau pengeluaran di periode ini'),
                 style: TextStyle(color: kMuted)),
           ),
         for (final n in names)
@@ -307,16 +307,16 @@ class _RecapState extends State<RecapScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(n, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    child: Text(n, style: TextStyle(fontWeight: FontWeight.w600)),
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text('+${money(accIn[n] ?? 0)}',
-                          style: const TextStyle(color: kIn, fontSize: 13)),
+                          style: TextStyle(color: kIn, fontSize: 13)),
                       const SizedBox(height: 2),
                       Text('-${money(accOut[n] ?? 0)}',
-                          style: const TextStyle(color: kOut, fontSize: 13)),
+                          style: TextStyle(color: kOut, fontSize: 13)),
                     ],
                   ),
                 ],
@@ -367,7 +367,7 @@ class _BarsPainter extends CustomPainter {
       }
       if (i % step == 0) {
         final tp = TextPainter(
-          text: TextSpan(text: b[i].label, style: const TextStyle(color: kMuted, fontSize: 10)),
+          text: TextSpan(text: b[i].label, style: TextStyle(color: kMuted, fontSize: 10)),
           textDirection: TextDirection.ltr,
         )..layout();
         tp.paint(canvas, Offset(cx - tp.width / 2, baseY + 6));

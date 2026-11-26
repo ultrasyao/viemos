@@ -4,13 +4,58 @@ import 'sfx.dart';
 
 const kOrange = Color(0xFFFFB066);
 const kGlow = Color(0x38FFB066);
-const kCard = Color(0xFF151C1D);
-const kBorder = Color(0xFF2A3335);
+bool kDarkMode = true;
+bool kEnglish = false;
+Color get kCard => kDarkMode ? const Color(0xFF151C1D) : const Color(0xFFFFFFFF);
+Color get kBorder => kDarkMode ? const Color(0xFF2A3335) : const Color(0xFFE1E5E2);
 const kIn = Color(0xFF7BE0A8);
 const kOut = Color(0xFFFF8F85);
-const kText = Color(0xFFE6EEEE);
-const kMuted = Color(0xFF8A9A9C);
-const kTitle = TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: kText);
+Color get kText => kDarkMode ? const Color(0xFFE6EEEE) : const Color(0xFF172020);
+Color get kMuted => kDarkMode ? const Color(0xFF8A9A9C) : const Color(0xFF687474);
+TextStyle get kTitle => TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: kText);
+
+String tr(String id) {
+  if (!kEnglish) return id;
+  const map = <String, String>{
+    'Catat transaksi': 'Record transactions', 'Rekening': 'Accounts', 'Riwayat': 'History',
+    'Rekap': 'Summary', 'Setting': 'Settings', 'Hari ini': 'Today', 'Total saldo': 'Total balance',
+    'Masuk': 'Income', 'Keluar': 'Expense', 'Pindah saldo': 'Transfer',
+    'Pemasukan': 'Income', 'Pengeluaran': 'Expense', 'Catatan (opsional)': 'Note (optional)',
+    'Waktu': 'Date & time', 'Simpan': 'Save', 'Simpan perubahan': 'Save changes',
+    'Ubah transaksi': 'Edit transaction', 'Hapus transaksi?': 'Delete transaction?',
+    'Belum ada rekening': 'No accounts yet', 'Belum ada transaksi': 'No transactions yet',
+    'Belum ada transaksi hari ini': 'No transactions today', 'Ketuk tombol pensil di kanan bawah': 'Tap the pencil button at the bottom right',
+    'Nama barang / jasa': 'Product / service name', 'Harga': 'Price', 'Tambah ke struk': 'Add to receipt',
+    'Mode kasir': 'Cashier mode', 'Mode transaksi': 'Transaction mode', 'Detail penjualan': 'Sale details',
+    'Nama pelanggan (opsional)': 'Customer name (optional)', 'Item struk': 'Receipt items',
+    'Simpan penjualan': 'Save sale', 'Simpan & bagikan struk': 'Save & share receipt',
+    'Keypad Viemos': 'Viemos keypad', 'Bersihkan': 'Clear', 'Selesai': 'Done',
+    'Tampilan': 'Appearance', 'Mode tampilan': 'Appearance mode', 'Gelap': 'Dark', 'Terang': 'Light',
+    'Bahasa aplikasi': 'App language', 'Bahasa / Language': 'Language', 'Tema aplikasi': 'App theme', 'Keamanan': 'Security', 'Backup & data': 'Backup & data',
+    'Dari rekening': 'From account', 'Ke rekening': 'To account',
+    'Pilih WhatsApp dari menu berbagi Android untuk mengirim gambar dan detail struk.': 'Choose WhatsApp from the Android share menu to send the receipt image and details.',
+    'Buat transaksi penjualan dan bagikan struk ke pelanggan.': 'Record a sale and share the receipt with your customer.',
+    'Tambah barang': 'Add item', 'Masukkan hasil penjualan ke rekening': 'Deposit sale into account',
+    'Belum ada barang ditambahkan': 'No items added yet', 'Total': 'Total',
+    'Kunci PIN': 'PIN lock', 'Ubah PIN': 'Change PIN', 'Kunci otomatis': 'Auto lock', 'Kunci sekarang': 'Lock now',
+    'Pengingat': 'Reminders', 'Pengingat harian': 'Daily reminder', 'Ingatkan catat transaksi': 'Remind me to record transactions',
+    'Jam pengingat': 'Reminder time', 'Tes notifikasi': 'Test notification', 'Backup': 'Backup', 'Download backup': 'Download backup',
+    'Simpan file .json ke HP — pilih folder Download': 'Save the .json file to your phone — choose the Downloads folder',
+    'Backup otomatis': 'Automatic backup', 'Folder backup': 'Backup folder', 'Backup sekarang': 'Back up now',
+    'Bagikan backup': 'Share backup', 'Backup ke clipboard': 'Copy backup to clipboard', 'Pulihkan': 'Restore',
+    'Pulihkan dari file': 'Restore from file', 'Mengganti semua data sekarang': 'Replaces all current data',
+    'Pulihkan backup otomatis': 'Restore automatic backup', 'Dari folder backup terakhir': 'From the latest backup folder',
+    'Pulihkan dari clipboard': 'Restore from clipboard', 'Data': 'Data', 'Ekspor CSV': 'Export CSV',
+    'Untuk dibuka di Excel / Sheets': 'For Excel / Sheets', 'Hapus semua data': 'Delete all data',
+    'Tampilan & suara': 'Appearance & sound', 'Suara': 'Sound', 'Klik & notifikasi transaksi': 'Clicks & transaction notifications',
+    'Getar': 'Haptics', 'Saat transaksi tersimpan': 'When a transaction is saved', 'Tampilkan desimal': 'Show decimals',
+    'Tentang': 'About', 'Tambah rekening': 'Add account', 'Nama rekening': 'Account name',
+    'Saldo awal (opsional)': 'Opening balance (optional)', 'Ketuk untuk ubah · geser ke kiri untuk hapus': 'Tap to edit · swipe left to delete',
+    'Semua': 'All', 'Bulanan': 'Monthly', 'Custom': 'Custom',
+    'Selisih': 'Net change', 'Per rekening': 'By account', 'Belum ada pemasukan atau pengeluaran di periode ini': 'No income or expenses in this period',
+  };
+  return map[id] ?? id;
+}
 
 bool kDecimals = false;
 
@@ -36,13 +81,14 @@ int? parseMoney(String s) {
 }
 
 String two(int n) => n.toString().padLeft(2, '0');
-const _bln = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const _blnId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const _blnEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 String fmtDate(DateTime d) =>
-    '${d.day} ${_bln[d.month - 1]} ${d.year}, ${two(d.hour)}:${two(d.minute)}';
+    '${d.day} ${(kEnglish ? _blnEn : _blnId)[d.month - 1]} ${d.year}, ${two(d.hour)}:${two(d.minute)}';
 
 Widget label(String t) => Padding(
       padding: const EdgeInsets.only(top: 18, bottom: 8),
-      child: Text(t, style: const TextStyle(color: kMuted, fontSize: 13)),
+      child: Text(tr(t), style: TextStyle(color: kMuted, fontSize: 13)),
     );
 
 void toast(BuildContext c, String m) =>
@@ -156,7 +202,7 @@ class GlassCard extends StatelessWidget {
       color: kCard,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(22),
-        side: const BorderSide(color: kBorder),
+        side: BorderSide(color: kBorder),
       ),
       child: Padding(padding: padding, child: child),
     );
