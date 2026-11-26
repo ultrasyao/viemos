@@ -159,9 +159,10 @@ Future<bool> confirmDialog(
   required String title,
   String? message,
   String confirmText = 'OK',
-  String cancelText = tr('Batal'),
+  String? cancelText,
   bool danger = false,
 }) async {
+  final cancelLabel = cancelText ?? tr('Batal');
   final c = danger ? kOut : kOrange;
   final r = await showAppDialog<bool>(
     context,
@@ -181,7 +182,7 @@ Future<bool> confirmDialog(
           Row(
             children: [
               Expanded(
-                child: AppButton(cancelText, outlined: true, onTap: () => Navigator.pop(ctx, false)),
+                child: AppButton(cancelLabel, outlined: true, onTap: () => Navigator.pop(ctx, false)),
               ),
               const SizedBox(width: 10),
               Expanded(

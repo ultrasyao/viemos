@@ -708,13 +708,14 @@ Route<T> _pinRoute<T>(Widget page) {
 }
 
 /// Minta PIN lalu return true kalau benar.
-Future<bool> verifyPin(BuildContext context, {String title = tr('Masukkan PIN')}) async {
+Future<bool> verifyPin(BuildContext context, {String? title}) async {
+  final dialogTitle = title ?? tr('Masukkan PIN');
   final r = await Navigator.of(context).push<bool>(_pinRoute<bool>(
     Builder(
       builder: (c) => Scaffold(
         body: _PinBg(
           child: PinPad(
-            title: title,
+            title: dialogTitle,
             onCancel: () => Navigator.pop(c, false),
             onSubmit: (p) async {
               final e = await Lock.check(p);

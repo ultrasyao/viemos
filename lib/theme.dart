@@ -101,14 +101,14 @@ class ThemeFx extends StatefulWidget {
   final Widget child;
   const ThemeFx({super.key, required this.child});
 
-  static final GlobalKey<_ThemeFxState> key = GlobalKey<_ThemeFxState>();
+  static final GlobalKey<_ThemeFxState> rootKey = GlobalKey<_ThemeFxState>();
 
   static Future<void> change(
     VoidCallback apply, {
     Offset? origin,
     bool circle = false,
   }) async {
-    final s = key.currentState;
+    final s = rootKey.currentState;
     if (s == null) {
       apply();
       rebuildAllElements();

@@ -86,7 +86,7 @@ class _ViemosAppState extends State<ViemosApp> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       theme: _theme(),
       themeAnimationDuration: Duration.zero, // animasinya diurus ThemeFx
-      builder: (context, child) => ThemeFx(key: ThemeFx.key, child: child ?? const SizedBox()),
+      builder: (context, child) => ThemeFx(key: ThemeFx.rootKey, child: child ?? const SizedBox()),
       home: const Root(),
     );
   }
