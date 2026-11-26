@@ -203,7 +203,7 @@ class _RecapState extends State<RecapScreen> {
           ]),
           const SizedBox(height: 12),
           if (bs.isEmpty || maxV == 0)
-            const SizedBox(
+            SizedBox(
               height: 110,
               child: Center(child: Text('Belum ada data', style: TextStyle(color: kMuted))),
             )
