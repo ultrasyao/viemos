@@ -154,15 +154,23 @@ class _AddAccountState extends State<_AddAccount> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => Kb.close(notify: false));
     nameC.dispose();
     balC.dispose();
     super.dispose();
   }
 
   void _focus(InputCtl? c, [GlobalKey? k]) {
+    if (c == null) {
+      Kb.close();
+      return;
+    }
     setState(() => _active = c);
-    if (c == null || k == null) return;
-    Future.delayed(const Duration(milliseconds: 330), () {
+    Kb.open(context, c, onClosed: () {
+      if (mounted) setState(() => _active = null);
+    });
+    if (k == null) return;
+    Future.delayed(const Duration(milliseconds: 340), () {
       final ctx = k.currentContext;
       if (ctx != null && mounted) {
         Scrollable.ensureVisible(
@@ -182,6 +190,7 @@ class _AddAccountState extends State<_AddAccount> {
       return;
     }
     await Db.i.addAccount(n, kind, parseMoney(balC.text) ?? 0, color);
+    Kb.close(notify: false);
     if (mounted) Navigator.pop(context);
   }
 
@@ -190,7 +199,7 @@ class _AddAccountState extends State<_AddAccount> {
     return PopScope(
       canPop: _active == null,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _active != null) setState(() => _active = null);
+        if (!didPop && _active != null) Kb.close();
       },
       child: AppPanel(
         child: Column(
@@ -204,7 +213,10 @@ class _AddAccountState extends State<_AddAccount> {
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                 ),
                 Bounce(
-                  onTap: () => Navigator.pop(context),
+                  onTap: () {
+                    Kb.close(notify: false);
+                    Navigator.pop(context);
+                  },
                   child: const Padding(
                     padding: EdgeInsets.all(8),
                     child: Icon(Icons.close_rounded, color: kMuted),
@@ -235,10 +247,6 @@ class _AddAccountState extends State<_AddAccount> {
               onTap: () => _focus(nameC, _nameKey),
               hint: 'Mis. BCA, Dompet',
             ),
-            KbDock(
-              active: _active == nameC ? nameC : null,
-              onDone: () => setState(() => _active = null),
-            ),
             label('Saldo awal (opsional)'),
             KbField(
               key: _balKey,
@@ -247,10 +255,6 @@ class _AddAccountState extends State<_AddAccount> {
               onTap: () => _focus(balC, _balKey),
               hint: '0',
               prefix: 'Rp',
-            ),
-            KbDock(
-              active: _active == balC ? balC : null,
-              onDone: () => setState(() => _active = null),
             ),
             const SizedBox(height: 18),
             AppButton('Simpan', onTap: _save),

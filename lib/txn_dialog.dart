@@ -118,9 +118,16 @@ class _TxnDialogState extends State<TxnDialog> {
 
   /// Pindahkan keyboard Viemos ke kolom [c] dan gulir kolomnya ke tempat terlihat.
   void _focus(InputCtl? c, [GlobalKey? k]) {
+    if (c == null) {
+      Kb.close();
+      return;
+    }
     setState(() => _active = c);
-    if (c == null || k == null) return;
-    Future.delayed(const Duration(milliseconds: 330), () {
+    Kb.open(context, c, accent: _c, onClosed: () {
+      if (mounted) setState(() => _active = null);
+    });
+    if (k == null) return;
+    Future.delayed(const Duration(milliseconds: 340), () {
       final ctx = k.currentContext;
       if (ctx != null && mounted) {
         Scrollable.ensureVisible(
@@ -135,6 +142,8 @@ class _TxnDialogState extends State<TxnDialog> {
 
   @override
   void dispose() {
+    // tutup keyboard sesudah frame ini (tidak boleh ubah state saat dispose)
+    WidgetsBinding.instance.addPostFrameCallback((_) => Kb.close(notify: false));
     amountC.dispose();
     noteC.dispose();
     super.dispose();
@@ -176,6 +185,7 @@ class _TxnDialogState extends State<TxnDialog> {
       return;
     }
     _busy = true;
+    Kb.close(notify: false);
     final note = noteC.text.trim();
     if (_isEdit) {
       await Db.i.updateTxn(
@@ -209,6 +219,7 @@ class _TxnDialogState extends State<TxnDialog> {
   Future<void> _delete() async {
     final e = widget.edit;
     if (_busy || e == null) return;
+    Kb.close();
     final ok = await confirmDialog(
       context,
       title: 'Hapus transaksi?',
@@ -303,7 +314,7 @@ class _TxnDialogState extends State<TxnDialog> {
       // tombol back: tutup keyboard Viemos dulu, baru popup
       canPop: _active == null,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _active != null) setState(() => _active = null);
+        if (!didPop && _active != null) Kb.close();
       },
       child: AppPanel(
         accent: _c,
@@ -326,7 +337,10 @@ class _TxnDialogState extends State<TxnDialog> {
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                 ),
                 Bounce(
-                  onTap: () => Navigator.pop(context),
+                  onTap: () {
+                    Kb.close(notify: false);
+                    Navigator.pop(context);
+                  },
                   child: const Padding(
                     padding: EdgeInsets.all(8),
                     child: Icon(Icons.close_rounded, color: kMuted),
@@ -349,11 +363,6 @@ class _TxnDialogState extends State<TxnDialog> {
               accent: _c,
               style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
               helper: 'Koma untuk desimal',
-            ),
-            KbDock(
-              active: _active == amountC ? amountC : null,
-              accent: _c,
-              onDone: () => setState(() => _active = null),
             ),
             _lbl(isTf ? 'Dari rekening' : 'Rekening'),
             _chips(from, (id) => setState(() {
@@ -383,11 +392,6 @@ class _TxnDialogState extends State<TxnDialog> {
               hint: 'Mis. makan siang',
               accent: _c,
               maxLines: 2,
-            ),
-            KbDock(
-              active: _active == noteC ? noteC : null,
-              accent: _c,
-              onDone: () => setState(() => _active = null),
             ),
             if (err != null)
               Padding(

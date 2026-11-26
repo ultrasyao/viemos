@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'kb.dart';
 import 'sfx.dart';
 import 'ui.dart';
 
@@ -39,8 +41,10 @@ Widget _expand(BuildContext ctx, Animation<double> a, Widget child) {
       final op = const Interval(0.0, 0.3).transform(v).clamp(0.0, 1.0).toDouble();
       final angle = (1 - flip) * 1.0; // terlipat ke belakang -> rata
       final s = 0.72 + 0.28 * grow;
-      return Padding(
-        padding: EdgeInsets.only(bottom: bottom),
+      final safeB = MediaQuery.of(ctx).padding.bottom;
+      // keyboard Viemos menempel di dasar layar; popup naik mengikuti (animasi halus)
+      return ValueListenableBuilder<double>(
+        valueListenable: Kb.inset,
         child: SafeArea(
           child: Align(
             alignment: Alignment(0, -1 + pos),
@@ -55,6 +59,12 @@ Widget _expand(BuildContext ctx, Animation<double> a, Widget child) {
               ),
             ),
           ),
+        ),
+        builder: (_, kb, child) => AnimatedPadding(
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.only(bottom: math.max(bottom, kb - safeB)),
+          child: child,
         ),
       );
     },

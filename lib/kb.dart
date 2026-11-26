@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'money_input.dart';
 import 'sfx.dart';
@@ -187,28 +188,180 @@ class _CursorState extends State<_Cursor> with SingleTickerProviderStateMixin {
       );
 }
 
-// ===================================================================== dock
+// ===================================================================== sheet
 
-/// Tempat keyboard di dalam popup: meluncur masuk saat ada kolom aktif.
-class KbDock extends StatelessWidget {
-  final InputCtl? active;
-  final VoidCallback onDone;
-  final Color accent;
-  const KbDock({super.key, required this.active, required this.onDone, this.accent = kOrange});
+/// Keyboard Viemos menempel di dasar layar (menutupi bar navigasi): naik
+/// dengan pegas, barisnya muncul berurutan dari bawah, dan bisa ditarik ke
+/// bawah untuk menutup. Popup di atasnya otomatis naik mengikuti lewat [inset].
+class Kb {
+  Kb._();
+
+  /// Tinggi keyboard yang sedang tampil dari dasar layar. 0 = tertutup.
+  static final ValueNotifier<double> inset = ValueNotifier<double>(0);
+  static final ValueNotifier<(InputCtl, Color)?> _active =
+      ValueNotifier<(InputCtl, Color)?>(null);
+  static final GlobalKey<_KbSheetState> _key = GlobalKey<_KbSheetState>();
+  static OverlayEntry? _entry;
+  static VoidCallback? _onClosed;
+
+  static const double _extra = 32; // area pegangan + padding sheet
+  static double rowsHeight(InputCtl c) => c.money ? 218 : 194;
+
+  /// Tampilkan keyboard untuk [ctl]. [onClosed] dipanggil saat keyboard
+  /// ditutup (tombol Selesai / tarik ke bawah / [close]).
+  static void open(BuildContext context, InputCtl ctl,
+      {Color accent = kOrange, VoidCallback? onClosed}) {
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null) return;
+    _onClosed = onClosed;
+    _active.value = (ctl, accent);
+    final safe = MediaQuery.paddingOf(overlay.context).bottom;
+    inset.value = rowsHeight(ctl) + _extra + safe;
+    final e = _entry;
+    if (e == null || !e.mounted) {
+      _entry = OverlayEntry(builder: (_) => _KbSheet(key: _key));
+      overlay.insert(_entry!);
+    } else {
+      _key.currentState?.show();
+    }
+  }
+
+  static void close({bool notify = true}) {
+    final cb = _onClosed;
+    _onClosed = null;
+    inset.value = 0;
+    final s = _key.currentState;
+    if (s != null) {
+      s.hide();
+    } else {
+      _remove();
+    }
+    if (notify) cb?.call();
+  }
+
+  static void _remove() {
+    final e = _entry;
+    _entry = null;
+    if (e != null && e.mounted) e.remove();
+    _active.value = null;
+  }
+}
+
+class _KbSheet extends StatefulWidget {
+  const _KbSheet({super.key});
+  @override
+  State<_KbSheet> createState() => _KbSheetState();
+}
+
+class _KbSheetState extends State<_KbSheet> with SingleTickerProviderStateMixin {
+  // pegas sedikit memantul: terasa "hidup", bukan geser kaku
+  static const _spring = SpringDescription(mass: 1, stiffness: 320, damping: 27);
+  late final AnimationController _c = AnimationController.unbounded(vsync: this, value: 0);
+  bool _closing = false;
+  double _h = 320;
+
+  @override
+  void initState() {
+    super.initState();
+    show();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  void show([double velocity = 0]) {
+    _closing = false;
+    _c.animateWith(SpringSimulation(_spring, _c.value, 1.0, velocity));
+  }
+
+  Future<void> hide() async {
+    if (_closing) return;
+    _closing = true;
+    await _c.animateTo(0, duration: const Duration(milliseconds: 230), curve: Curves.easeInCubic);
+    if (mounted && _closing) Kb._remove();
+  }
+
+  void _drag(DragUpdateDetails d) {
+    _c.value = (_c.value - d.delta.dy / _h).clamp(0.0, 1.0).toDouble();
+  }
+
+  void _dragEnd(DragEndDetails d) {
+    final vy = d.velocity.pixelsPerSecond.dy;
+    if (vy > 500 || _c.value < 0.65) {
+      Kb.close();
+    } else {
+      show(-vy / _h);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final a = active;
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-      alignment: Alignment.topCenter,
-      child: a == null
-          ? const SizedBox(width: double.infinity)
-          : Padding(
-              padding: const EdgeInsets.only(top: 14),
-              child: AppKeyboard(key: ValueKey(a), ctl: a, accent: accent, onDone: onDone),
+    final safe = MediaQuery.paddingOf(context).bottom;
+    return ValueListenableBuilder<(InputCtl, Color)?>(
+      valueListenable: Kb._active,
+      builder: (_, a, __) {
+        if (a == null) return const SizedBox.shrink();
+        final ctl = a.$1;
+        final accent = a.$2;
+        _h = Kb.rowsHeight(ctl) + Kb._extra + safe + 24;
+        return Positioned(
+          left: 0,
+          right: 0,
+          bottom: -24, // sedikit di luar layar: pantulan pegas tidak membuka celah
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (_, child) =>
+                Transform.translate(offset: Offset(0, (1 - _c.value) * _h), child: child),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onVerticalDragUpdate: _drag,
+              onVerticalDragEnd: _dragEnd,
+              child: Material(
+                type: MaterialType.transparency,
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(10, 8, 10, 6 + safe + 24),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0C1213),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                    border: Border(top: BorderSide(color: accent.withAlpha(120), width: 1.2)),
+                    boxShadow: [
+                      BoxShadow(
+                          color: accent.withAlpha(46), blurRadius: 30, offset: const Offset(0, -6)),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration:
+                            BoxDecoration(color: kBorder, borderRadius: BorderRadius.circular(2)),
+                      ),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment.topCenter,
+                        child: AppKeyboard(
+                          key: ValueKey(ctl),
+                          ctl: ctl,
+                          accent: accent,
+                          anim: _c,
+                          onDone: () => Kb.close(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
+          ),
+        );
+      },
     );
   }
 }
@@ -219,25 +372,22 @@ class AppKeyboard extends StatefulWidget {
   final InputCtl ctl;
   final VoidCallback onDone;
   final Color accent;
-  const AppKeyboard({super.key, required this.ctl, required this.onDone, this.accent = kOrange});
+  final Animation<double> anim; // 0..1 progres naiknya sheet (untuk stagger baris)
+  const AppKeyboard({
+    super.key,
+    required this.ctl,
+    required this.onDone,
+    required this.anim,
+    this.accent = kOrange,
+  });
 
   @override
   State<AppKeyboard> createState() => _AppKeyboardState();
 }
 
-class _AppKeyboardState extends State<AppKeyboard> with SingleTickerProviderStateMixin {
-  late final AnimationController _in = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 520),
-  )..forward();
+class _AppKeyboardState extends State<AppKeyboard> {
   late bool _shift = widget.ctl.text.isEmpty; // huruf besar di awal kalimat
   bool _sym = false;
-
-  @override
-  void dispose() {
-    _in.dispose();
-    super.dispose();
-  }
 
   void _buzz() {
     if (Sfx.haptic) HapticFeedback.selectionClick();
@@ -260,20 +410,26 @@ class _AppKeyboardState extends State<AppKeyboard> with SingleTickerProviderStat
     if (!widget.ctl.money && widget.ctl.text.isEmpty && !_shift) setState(() => _shift = true);
   }
 
-  Widget _wrap(Widget child) => AnimatedBuilder(
-        animation: _in,
+  /// Baris naik + memudar berurutan; baris paling bawah duluan ([fromBottom] = 0).
+  Widget _rowIn(int fromBottom, Widget child) => AnimatedBuilder(
+        animation: widget.anim,
         child: child,
         builder: (_, c) {
-          final t = Curves.easeOutCubic.transform(_in.value);
+          final t = Curves.easeOutCubic
+              .transform(((widget.anim.value - 0.06 - 0.075 * fromBottom) / 0.5).clamp(0.0, 1.0));
           return Opacity(
-            opacity: t.clamp(0.0, 1.0).toDouble(),
-            child: Transform(
-              alignment: Alignment.bottomCenter,
-              transform: persp(0.0014) * Matrix4.rotationX((1 - t) * 0.5),
-              child: c,
-            ),
+            opacity: t,
+            child: Transform.translate(offset: Offset(0, (1 - t) * 22), child: c),
           );
         },
+      );
+
+  Widget _row(int fromBottom, List<Widget> r, {bool last = false}) => _rowIn(
+        fromBottom,
+        Padding(
+          padding: EdgeInsets.only(bottom: last ? 0 : 6),
+          child: Row(children: r),
+        ),
       );
 
   // ---------------------------------------------------------------- angka
@@ -284,14 +440,10 @@ class _AppKeyboardState extends State<AppKeyboard> with SingleTickerProviderStat
           onTap: () => _type(s),
           child: Text(s, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
         );
-    Widget row(List<Widget> r) => Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Row(children: r),
-        );
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        row([
+        _row(3, [
           k('1'),
           k('2'),
           k('3'),
@@ -303,7 +455,7 @@ class _AppKeyboardState extends State<AppKeyboard> with SingleTickerProviderStat
             child: const Icon(Icons.backspace_outlined, color: kMuted, size: 22),
           ),
         ]),
-        row([
+        _row(2, [
           k('4'),
           k('5'),
           k('6'),
@@ -316,10 +468,11 @@ class _AppKeyboardState extends State<AppKeyboard> with SingleTickerProviderStat
                 widget.ctl.type('0');
               }
             },
-            child: const Text('000', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: kMuted)),
+            child: const Text('000',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: kMuted)),
           ),
         ]),
-        row([
+        _row(1, [
           k('7'),
           k('8'),
           k('9'),
@@ -327,29 +480,28 @@ class _AppKeyboardState extends State<AppKeyboard> with SingleTickerProviderStat
             height: 50,
             special: true,
             onTap: () => _type(','),
-            child: const Text(',', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: kMuted)),
+            child: const Text(',',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: kMuted)),
           ),
         ]),
-        Row(
-          children: [
-            k('0', flex: 2),
-            KbKey(
-              flex: 2,
-              height: 50,
-              fill: widget.accent,
-              onTap: widget.onDone,
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.check_rounded, color: Colors.black, size: 22),
-                  SizedBox(width: 6),
-                  Text('Selesai',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black)),
-                ],
-              ),
+        _row(0, [
+          k('0', flex: 2),
+          KbKey(
+            flex: 2,
+            height: 50,
+            fill: widget.accent,
+            onTap: widget.onDone,
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.check_rounded, color: Colors.black, size: 22),
+                SizedBox(width: 6),
+                Text('Selesai',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black)),
+              ],
             ),
-          ],
-        ),
+          ),
+        ], last: true),
       ],
     );
   }
@@ -372,23 +524,19 @@ class _AppKeyboardState extends State<AppKeyboard> with SingleTickerProviderStat
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
         );
-    Widget row(List<Widget> r) => Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Row(children: r),
-        );
     final l1 = _sym ? _s1 : _r1;
     final l2 = _sym ? _s2 : _r2;
     final l3 = _sym ? _s3 : _r3;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        row([for (final c in l1.split('')) ch(c)]),
-        row([
+        _row(3, [for (final c in l1.split('')) ch(c)]),
+        _row(2, [
           const Spacer(flex: 1),
           for (final c in l2.split('')) ch(c),
           const Spacer(flex: 1),
         ]),
-        row([
+        _row(1, [
           KbKey(
             flex: 3,
             height: 44,
@@ -414,53 +562,39 @@ class _AppKeyboardState extends State<AppKeyboard> with SingleTickerProviderStat
             child: const Icon(Icons.backspace_outlined, color: kMuted, size: 22),
           ),
         ]),
-        Row(
-          children: [
-            KbKey(
-              flex: 3,
-              height: 44,
-              special: true,
-              onTap: () {
-                _buzz();
-                setState(() => _sym = !_sym);
-              },
-              child: Text(_sym ? 'ABC' : '?123',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: kMuted)),
-            ),
-            KbKey(
-              flex: 8,
-              height: 44,
-              onTap: () => _type(' '),
-              child: const Text('spasi', style: TextStyle(fontSize: 13, color: kMuted)),
-            ),
-            KbKey(
-              flex: 5,
-              height: 44,
-              fill: widget.accent,
-              onTap: widget.onDone,
-              child: const Text('Selesai',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.black)),
-            ),
-          ],
-        ),
+        _row(0, [
+          KbKey(
+            flex: 3,
+            height: 44,
+            special: true,
+            onTap: () {
+              _buzz();
+              setState(() => _sym = !_sym);
+            },
+            child: Text(_sym ? 'ABC' : '?123',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: kMuted)),
+          ),
+          KbKey(
+            flex: 8,
+            height: 44,
+            onTap: () => _type(' '),
+            child: const Text('spasi', style: TextStyle(fontSize: 13, color: kMuted)),
+          ),
+          KbKey(
+            flex: 5,
+            height: 44,
+            fill: widget.accent,
+            onTap: widget.onDone,
+            child: const Text('Selesai',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.black)),
+          ),
+        ], last: true),
       ],
     );
   }
 
   @override
-  Widget build(BuildContext context) {
-    return _wrap(
-      Container(
-        padding: const EdgeInsets.fromLTRB(6, 10, 6, 4),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0C1213),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: kBorder),
-        ),
-        child: widget.ctl.money ? _numPad() : _textPad(),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => widget.ctl.money ? _numPad() : _textPad();
 }
 
 /// Tombol keyboard bergaya 3D: ada "tebal" di bawah, turun & miring saat ditekan.

@@ -72,11 +72,13 @@ class _RootState extends State<Root> {
         children: [
           ValueListenableBuilder<double>(
             valueListenable: _intro,
-            child: const Shell(),
+            // RepaintBoundary: aplikasi digambar sekali lalu cuma "digeser" sebagai
+            // layer saat ditarik masuk (tidak digambar ulang tiap frame -> mulus)
+            child: const RepaintBoundary(child: Shell()),
             builder: (_, c, child) {
               final z = introDone
                   ? 1.0
-                  : const Interval(0.66, 1.0, curve: Curves.easeOutCubic).transform(c);
+                  : const Interval(kIntroZoomAt, 1.0, curve: Curves.easeOutCubic).transform(c);
               final sc = 0.9 + 0.1 * z;
               return Transform(
                 alignment: Alignment.center,
@@ -88,7 +90,9 @@ class _RootState extends State<Root> {
             },
           ),
           if (!introDone)
-            Intro(progress: _intro, onDone: () => setState(() => introDone = true)),
+            RepaintBoundary(
+              child: Intro(progress: _intro, onDone: () => setState(() => introDone = true)),
+            ),
         ],
       ),
     );
